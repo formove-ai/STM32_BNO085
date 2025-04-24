@@ -1,0 +1,20 @@
+{
+  "name": "bno085_spi_mock",
+  "version": "0.0.1",
+  "description": "This is the mock of the readout library for the BNO085 IMU",
+  "keywords": "BNO085",
+  "authors":
+  [
+    {
+      "name": "Alex Oldemeier",
+      "email": "alexander.oldemeier@tum.de",
+      "maintainer": true
+    }
+  ],
+  "dependencies": {
+    "hal_mock": "0.0.1"
+  },
+  "license": "Proprietary",
+  "frameworks": "*",
+  "platforms": ["native"]
+}
