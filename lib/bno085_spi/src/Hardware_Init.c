@@ -1,9 +1,6 @@
 /*
  * @file Hardware_Init.c
  * @brief HAL initialization functions for hardware (GPIO, Timer, SPI).
- *
- * See sensorsuit/experimental/imu_readout_library/README.md for more
- * information.
  */
 
 // --- Includes -------------------------------------------------------
