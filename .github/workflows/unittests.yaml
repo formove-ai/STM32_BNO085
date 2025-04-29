@@ -1,0 +1,27 @@
+name: BNO085 SPI library CI Unit Tests
+on:
+  push:
+    paths: 
+      - "**/*.c"
+      - "**/*.h"
+      - "**/*.ini"
+    branches:
+      - main
+  pull_request:
+    paths: 
+      - "**/*.c"
+      - "**/*.h"
+      - "**/*.ini"
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - name: Set up Python
+      uses: actions/setup-python@v1
+    - name: Install PlatformIO
+      run: |
+        python -m pip install --upgrade pip
+        pip install platformio
+    - name: Run unit tests on the native platform
+      run: platformio test -e native
