@@ -36,6 +36,7 @@ the change. GitHub issues are primarily intended for bug reports and fixes.
 ## **Do you have questions about the source code?**
 
 * You can ask the autors a question about how to use the library.
+* Contact: <project-maintainers@t-online.de>
 
 Thanks! :heart:
 
