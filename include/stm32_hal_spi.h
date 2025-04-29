@@ -33,7 +33,7 @@
 #include "stm32wbxx_hal_spi.h"
 #elif defined(STM32WLxx)
 #include "stm32wlxx_hal_spi.h"
-#elif defined(TEST_BUILD_FOR_BNO085_LIB)
+#elif defined(BNO085_BUILD_FOR_INTERNAL_UNIT_TESTS)
 #include "hal_mock_for_bno085_spi.h"
 #else
 #error "Unsupported STM32 series. Please define the appropriate STM32 series macro."
