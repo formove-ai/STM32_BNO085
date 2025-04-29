@@ -1,0 +1,22 @@
+{
+    "name": "bno085_spi_internal_mocks",
+    "version": "0.0.1",
+    "description": "Internal mocks for unit tests of the BNO085 IMU STM32 library",
+    "keywords": "BNO085",
+    "authors":
+    [
+      {
+        "name": "Paul Gollwitzer",
+        "email": "paul.gollwitzer@tum.de"
+      },
+      {
+        "name": "Alex Oldemeier",
+        "email": "alexander.oldemeier@tum.de",
+        "maintainer": true
+      }
+    ],
+    "license": "Proprietary",
+    "frameworks": "*",
+    "platforms": ["native"]
+  }
+  

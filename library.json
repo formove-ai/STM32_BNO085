@@ -1,0 +1,20 @@
+{
+    "name": "bno085_spi",
+    "version": "0.0.1",
+    "description": "A readout library for the BNO085 IMU on STM32",
+    "keywords": "BNO085",
+    "authors":
+    [
+      {
+        "name": "Paul Gollwitzer",
+        "email": "project-maintainers@t-online.de",
+        "maintainer": true
+      },
+      {
+        "name": "Alex Oldemeier"
+      }
+    ],
+    "license": "Proprietary",
+    "frameworks": "*",
+    "platforms": ["ststm32"]
+}
