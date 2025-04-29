@@ -1,6 +1,8 @@
 #ifndef SENSORSUIT_PROD_BNO085_SPI_LIB_BNO085_SPI_INCLUDE_STM32_HAL_SPI_H
 #define SENSORSUIT_PROD_BNO085_SPI_LIB_BNO085_SPI_INCLUDE_STM32_HAL_SPI_H
 
+// some random change
+
 #if defined(STM32F0xx)
 #include "stm32f0xx_hal_spi.h"
 #elif defined(STM32F1xx)
