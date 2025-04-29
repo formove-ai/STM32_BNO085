@@ -2,9 +2,6 @@
  * @file BNO085_SPI_Library.c
  * @brief SPI Interface and service routine functions for BNO085 via SHTP
  * protocol used by the manufacturer CEVA.
- *
- * See sensorsuit/experimental/imu_readout_library/README.md for more
- * information.
  */
 
 // --- Includes -------------------------------------------------------
@@ -183,9 +180,6 @@ static uint8_t wait_for_INTN(sensor_meta *sensor) {
       status = D_ERR;
       break;
     }
-    // TODO(STS-1924): For hand sensorhub product ID check a strict reduction to
-    // 50 us necessary, collides with normal sensorhub init routine, in which
-    // 1000 us strictly required.
     delay_Us(1000);  // experimental value
   }
 
@@ -222,9 +216,6 @@ static void print_Header(shtp_package data) {
       if (data.shtp_Header[x] < 0x10) {
         printf("0");
       }
-      // Print in hex
-      // printf("%#x", data.shtp_Header[x]);
-      // Print in dec
       printf("%d", data.shtp_Header[x]);
     }
     printf("\n");
@@ -256,9 +247,6 @@ static void print_Data(shtp_package data) {
       if (data.shtp_Data[x] < 0x10) {
         printf("0");
       }
-      // Print in hex
-      // printf("%#x", data.shtp_Data[x]);
-      // Print in dec
       printf("%d", data.shtp_Data[x]);
     }
     printf("\n");
@@ -288,9 +276,6 @@ static void print_Data(shtp_package data) {
     else if (data.shtp_Header[2] == 5)
       printf("Gyro-vector");
     else
-      // Print in hex
-      // printf("%#x", data.shtp_Header[2]);
-      // Print in dec
       printf("%d", data.shtp_Header[2]);
 
     printf("\n");

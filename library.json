@@ -7,12 +7,11 @@
     [
       {
         "name": "Paul Gollwitzer",
-        "email": "paul.gollwitzer@tum.de"
+        "email": "project-maintainers@t-online.de",
+        "maintainer": true
       },
       {
-        "name": "Alex Oldemeier",
-        "email": "alexander.oldemeier@tum.de",
-        "maintainer": true
+        "name": "Alex Oldemeier"
       }
     ],
     "license": "Proprietary",
