@@ -93,8 +93,8 @@ uint8_t check_Command_Success(sensor_meta *sensor, uint8_t status_command);
 void deassert_csn(sensor_meta *sensor);
 
 // Private function exposed for unit testing:
-#ifdef TEST_BUILD_FOR_BNO085_LIB
+#ifdef BNO085_BUILD_FOR_INTERNAL_UNIT_TESTS
 uint16_t parse_InputReport(sensor_meta *sensor);
-#endif  // TEST_BUILD_FOR_BNO085_LIB
+#endif  // BNO085_BUILD_FOR_INTERNAL_UNIT_TESTS
 
 #endif  // SENSORSUIT_PROD_BNO085_SPI_LIB_BNO085_SPI_INCLUDE_BNO085_SPI_LIBRARY_H_
