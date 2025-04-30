@@ -57,8 +57,6 @@ typedef struct {
   uint32_t TxEventFifoControl;
   uint32_t MessageMarker;
 } FDCAN_TxHeaderTypeDef;
-// TODO(STS-299): This type def should probably be a replica of the real
-// thing as values might be set and checked.
 typedef struct {
   int foo;  // Avoid the struct being empty, as cmock comparison then fails.
 } GPIO_TypeDef;

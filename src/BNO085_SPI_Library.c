@@ -1807,7 +1807,7 @@ uint8_t reinitialize_IMU(sensor_meta *sensor) {
     sensor->shtp_package.shtp_Data[shtp_index_temp] = 0x00;
   }
   sensor->shtp_package.shtp_Data[3] =
-      1;  // Reinitialize entire sensor hub, 0 would be no operation
+      1;  // 0 would mean "no operation"
 
   // Send command
   status &= send_Command(sensor, SENSOR_COMMAND_INITIALIZE);
@@ -2052,14 +2052,9 @@ uint8_t check_Command_Success(sensor_meta *sensor, uint8_t status_command) {
       ++timeout_counter;
       if (timeout_counter >=
           2000) {  // Wait max 2000 * 100 us = 200 ms; experimental value
-        // Timeout error handling
         status = D_ERR;
         break;
       }
-      // delay
-      // TODO(STS-1924): For hand sensorhub product ID check a strict reduction
-      // to 35 us necessary, collides with normal sensorhub init routine, in
-      // which 100 us strictly required.
       delay_Us(100);  // experimental value
     }
   } else {
