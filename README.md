@@ -168,7 +168,7 @@ platformio test --environment native
 
 ## License
 
-Copyright (c) 2025 Paul Gollwitzer, Alexander Oldermeier
+Copyright (c) 2025 Paul Gollwitzer, Alexander Oldemeier
 
 This project is licensed under the MIT License - see the [License](LICENSE.md)
 file for details.
@@ -176,7 +176,7 @@ file for details.
 ## Authors & Contributors
 
 - Paul Gollwitzer – *maintainer*
-- Alexander Oldermeier - *maintainer*
+- Alexander Oldemeier - *maintainer*
 
 ## Acknowledgements
 
