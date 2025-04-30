@@ -1,4 +1,5 @@
 # Library for CEVA BNO085 IMU on STM32
+[![BNO085 SPI library CI Unit Tests](https://github.com/formove-ai/STM32_BNO085/actions/workflows/unittests.yaml/badge.svg)](https://github.com/formove-ai/STM32_BNO085/actions/workflows/unittests.yaml)
 
 ## Version
 
