@@ -1,3 +1,5 @@
+// TODO(#7): Use cmock to mock HAL functions
+
 #include "hal_mock_for_bno085_spi.h"
 
 void HAL_GPIO_WritePin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin,
