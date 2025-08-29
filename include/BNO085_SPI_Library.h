@@ -46,6 +46,8 @@ uint8_t enable_RotationVector(sensor_meta *sensor,
                               uint16_t time_between_reports);
 uint8_t enable_ARVR_stabilized_RotationVector(sensor_meta *sensor,
                                               uint16_t time_between_reports);
+uint8_t enable_GyroRotationVector(sensor_meta *sensor,
+                                  uint16_t time_between_reports);
 uint8_t enable_GameRotationVector(sensor_meta *sensor,
                                   uint16_t time_between_reports);
 uint8_t enable_ARVR_stabilized_GameRotationVector(
