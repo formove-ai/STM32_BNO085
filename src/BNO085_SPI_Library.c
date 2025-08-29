@@ -61,6 +61,8 @@ const byte CHANNEL_GYRO = 5;
 #define SENSOR_REPORTID_GAME_ROTATION_VECTOR 0x08
 #define SENSOR_REPORTID_ARVR_ROTATION_VECTOR 0x28
 #define SENSOR_REPORTID_ARVR_GAME_ROTATION_VECTOR 0x29
+#define SENSOR_REPORTID_GYRO_ROTATION_VECTOR 0x2A
+
 #define SENSOR_REPORTID_TAP_DETECTOR 0x10
 #define SENSOR_REPORTID_STABILITY_CLASSIFIER 0x13
 
@@ -632,7 +634,9 @@ uint16_t parse_InputReport(sensor_meta *sensor) {
              sensor->shtp_package.shtp_Data[5] ==
                  SENSOR_REPORTID_ARVR_ROTATION_VECTOR ||
              sensor->shtp_package.shtp_Data[5] ==
-                 SENSOR_REPORTID_ARVR_GAME_ROTATION_VECTOR) {
+                 SENSOR_REPORTID_ARVR_GAME_ROTATION_VECTOR ||
+             sensor->shtp_package.shtp_Data[5] ==
+                 SENSOR_REPORTID_GYRO_ROTATION_VECTOR) {
     sensor->quaternions.quat_Accuracy = status_report;
     sensor->quaternions.raw_Quat_I = data1;
     sensor->quaternions.raw_Quat_J = data2;
@@ -1045,6 +1049,25 @@ uint8_t enable_ARVR_stabilized_RotationVector(sensor_meta *sensor,
   sensor->rotation_vector_mode = SENSOR_REPORTID_ARVR_ROTATION_VECTOR;
   sensor->rotation_vector_report_frequency = time_between_reports;
   status &= set_FeatureCommand(sensor, SENSOR_REPORTID_ARVR_ROTATION_VECTOR,
+                               time_between_reports, 0);
+  return status;
+}
+
+/**
+ * @brief Enables the report Gyro Rotation Vector and sets the
+ * desired report delay (frequency).
+ * @note Calls set_FeatureCommand with no specific_Config which sends the config
+ * package.
+ * @param *sensor: Pointer to corresponding sensor meta data
+ * @param time_between_reports: Desired time in ms between two reports
+ * @return status: 1 no error occurred, 0 an error occurred
+ */
+uint8_t enable_GyroRotationVector(sensor_meta *sensor,
+                                  uint16_t time_between_reports) {
+  uint8_t status = N_ERR;
+  sensor->rotation_vector_mode = SENSOR_REPORTID_GYRO_ROTATION_VECTOR;
+  sensor->rotation_vector_report_frequency = time_between_reports;
+  status &= set_FeatureCommand(sensor, SENSOR_REPORTID_GYRO_ROTATION_VECTOR,
                                time_between_reports, 0);
   return status;
 }
@@ -1567,6 +1590,7 @@ uint8_t tare_IMU(sensor_meta *sensor, bool all_Axis) {
 
   // If z axis Tare and (ARVR-Stabilized) Game Rotation Vector, use reset to
   // start with new config (cf. [1], p. 42).
+  // TODO: Check if the same applies to GYRO_ROTATION_VECTOR.
   if ((sensor->rotation_vector_mode == SENSOR_REPORTID_GAME_ROTATION_VECTOR ||
        sensor->rotation_vector_mode ==
            SENSOR_REPORTID_ARVR_GAME_ROTATION_VECTOR) &&
@@ -1806,8 +1830,7 @@ uint8_t reinitialize_IMU(sensor_meta *sensor) {
   for (uint8_t shtp_index_temp = 3; shtp_index_temp < 12; shtp_index_temp++) {
     sensor->shtp_package.shtp_Data[shtp_index_temp] = 0x00;
   }
-  sensor->shtp_package.shtp_Data[3] =
-      1;  // 0 would mean "no operation"
+  sensor->shtp_package.shtp_Data[3] = 1;  // 0 would mean "no operation"
 
   // Send command
   status &= send_Command(sensor, SENSOR_COMMAND_INITIALIZE);
