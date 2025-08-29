@@ -6,8 +6,8 @@
  * information.
  */
 
-#ifndef SENSORSUIT_PROD_BNO085_SPI_LIB_BNO085_SPI_INCLUDE_SENSOR_STRUCT_H_
-#define SENSORSUIT_PROD_BNO085_SPI_LIB_BNO085_SPI_INCLUDE_SENSOR_STRUCT_H_
+#ifndef INCLUDE_SENSOR_STRUCT_H_
+#define INCLUDE_SENSOR_STRUCT_H_
 
 // --- Includes ------------------------------------------------------
 // Includes of standard libraries
@@ -123,4 +123,4 @@ typedef struct sensor_meta {
   additional_data additional_data;
 } sensor_meta;
 
-#endif  // SENSORSUIT_PROD_BNO085_SPI_LIB_BNO085_SPI_INCLUDE_SENSOR_STRUCT_H_
+#endif  // INCLUDE_SENSOR_STRUCT_H_

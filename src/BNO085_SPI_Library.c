@@ -1590,7 +1590,7 @@ uint8_t tare_IMU(sensor_meta *sensor, bool all_Axis) {
 
   // If z axis Tare and (ARVR-Stabilized) Game Rotation Vector, use reset to
   // start with new config (cf. [1], p. 42).
-  // TODO: Check if the same applies to GYRO_ROTATION_VECTOR.
+  // TODO(aol-work): Check if the same applies to GYRO_ROTATION_VECTOR.
   if ((sensor->rotation_vector_mode == SENSOR_REPORTID_GAME_ROTATION_VECTOR ||
        sensor->rotation_vector_mode ==
            SENSOR_REPORTID_ARVR_GAME_ROTATION_VECTOR) &&

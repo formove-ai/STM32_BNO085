@@ -7,8 +7,8 @@
  * information.
  */
 
-#ifndef SENSORSUIT_PROD_BNO085_SPI_LIB_BNO085_SPI_INCLUDE_BNO085_SPI_LIBRARY_H_
-#define SENSORSUIT_PROD_BNO085_SPI_LIB_BNO085_SPI_INCLUDE_BNO085_SPI_LIBRARY_H_
+#ifndef INCLUDE_BNO085_SPI_LIBRARY_H_
+#define INCLUDE_BNO085_SPI_LIBRARY_H_
 
 // --- Includes -------------------------------------------------------
 // Includes of standard libraries
@@ -99,4 +99,4 @@ void deassert_csn(sensor_meta *sensor);
 uint16_t parse_InputReport(sensor_meta *sensor);
 #endif  // BNO085_BUILD_FOR_INTERNAL_UNIT_TESTS
 
-#endif  // SENSORSUIT_PROD_BNO085_SPI_LIB_BNO085_SPI_INCLUDE_BNO085_SPI_LIBRARY_H_
+#endif  // INCLUDE_BNO085_SPI_LIBRARY_H_

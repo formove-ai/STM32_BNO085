@@ -1,5 +1,5 @@
-#ifndef SENSORSUIT_PROD_BNO085_SPI_LIB_BNO085_SPI_INCLUDE_STM32_HAL_H
-#define SENSORSUIT_PROD_BNO085_SPI_LIB_BNO085_SPI_INCLUDE_STM32_HAL_H
+#ifndef INCLUDE_STM32_HAL_H_
+#define INCLUDE_STM32_HAL_H_
 
 #if defined(STM32F0xx)
 #include "stm32f0xx_hal.h"
@@ -39,4 +39,4 @@
 #error "Unsupported STM32 series. Please define the appropriate STM32 series macro."
 #endif
 
-#endif // SENSORSUIT_PROD_BNO085_SPI_LIB_BNO085_SPI_INCLUDE_STM32_HAL_H
+#endif  // INCLUDE_STM32_HAL_H_
