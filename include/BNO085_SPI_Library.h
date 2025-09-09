@@ -91,6 +91,8 @@ uint8_t get_ME_Calibration_Config_IMU(sensor_meta *sensor);
 uint8_t config_periodic_DCD_IMU(sensor_meta *sensor, bool enable_periodic_DCD);
 uint8_t check_Command_Success(sensor_meta *sensor, uint8_t status_command);
 void deassert_csn(sensor_meta *sensor);
+uint8_t read_FRS(sensor_meta *sensor, uint16_t frs_type, uint32_t *buffer,
+                 uint16_t max_words, uint16_t *words_read);
 
 // Private function exposed for unit testing:
 #ifdef BNO085_BUILD_FOR_INTERNAL_UNIT_TESTS
