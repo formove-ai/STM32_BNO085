@@ -2084,6 +2084,7 @@ uint8_t read_FRS(sensor_meta *sensor, uint16_t frs_type, uint32_t *buffer,
                  uint16_t max_words, uint16_t *words_read) {
   uint8_t status = N_ERR;
   uint16_t offset = 0;
+  uint16_t timeout_counter = 0;
 
   *words_read = 0;  // initialize
 
@@ -2105,6 +2106,11 @@ uint8_t read_FRS(sensor_meta *sensor, uint16_t frs_type, uint32_t *buffer,
   while (!done) {
     status &= check_Command_Success(sensor, status);
     if (status == D_ERR) return D_ERR;
+
+    // Timeout protection
+    if (++timeout_counter >= 1000) {
+      return D_ERR;  // timed out waiting for response
+    }
 
     // Check if this is a read response
     if (sensor->shtp_package.shtp_Data[0] != SHTP_REPORT_FRS_READ_RESPONSE) {
