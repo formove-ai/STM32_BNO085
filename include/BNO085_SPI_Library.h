@@ -93,6 +93,9 @@ uint8_t check_Command_Success(sensor_meta *sensor, uint8_t status_command);
 void deassert_csn(sensor_meta *sensor);
 uint8_t read_FRS(sensor_meta *sensor, uint16_t frs_type, uint32_t *buffer,
                  uint16_t max_words, uint16_t *words_read);
+uint8_t write_FRS(sensor_meta *sensor, uint16_t frs_type, uint32_t *words,
+                  uint16_t num_words);
+uint8_t erase_FRS(sensor_meta *sensor, uint16_t frs_type);
 
 // Private function exposed for unit testing:
 #ifdef BNO085_BUILD_FOR_INTERNAL_UNIT_TESTS
