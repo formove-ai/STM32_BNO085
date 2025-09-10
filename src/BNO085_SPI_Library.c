@@ -37,6 +37,9 @@ const byte CHANNEL_GYRO = 5;
 // FRS Read/Write (cf. [2], p. 41 ff.)
 #define SHTP_REPORT_FRS_READ_RESPONSE 0xF3
 #define SHTP_REPORT_FRS_READ_REQUEST 0xF4
+#define SHTP_REPORT_FRS_WRITE_RESPONSE 0xF5
+#define SHTP_REPORT_FRS_WRITE_DATA_REQUEST 0xF6
+#define SHTP_REPORT_FRS_WRITE_REQUEST 0xF7
 
 // Commands we want use (cf. [2], p. 44 f.; p. 47 ff.)
 #define SENSOR_COMMAND_TARE 0x03
@@ -734,7 +737,10 @@ static uint16_t parse_CommandReport(sensor_meta *sensor) {
   } else if (sensor->shtp_package.shtp_Data[0] ==
              SHTP_REPORT_FRS_READ_RESPONSE) {
     return sensor->shtp_package.shtp_Data[0];
-
+    // FRS Write Response
+  } else if (sensor->shtp_package.shtp_Data[0] ==
+             SHTP_REPORT_FRS_WRITE_RESPONSE) {
+    return sensor->shtp_package.shtp_Data[0];
   } else {
     // This sensor report ID is unhandled.
     // See [2] to add additional feature reports as needed
@@ -2166,4 +2172,142 @@ uint8_t read_FRS(sensor_meta *sensor, uint16_t frs_type, uint32_t *buffer,
 
   *words_read = offset;
   return N_ERR;
+}
+
+/**
+ * @brief Write a block of words into an FRS record.
+ * @param sensor: Pointer to sensor metadata
+ * @param frs_type: FRS record type
+ * @param words: Pointer to array of 32-bit words to be written
+ * @param num_words: Number of 32-bit words in the array
+ * @return status: N_ERR if success, D_ERR otherwise
+ */
+uint8_t write_FRS(sensor_meta *sensor, uint16_t frs_type, uint32_t *words,
+                  uint16_t num_words) {
+  uint8_t status = N_ERR;
+
+  // Send FRS Write Request
+  sensor->shtp_package.shtp_Data[0] =
+      SHTP_REPORT_FRS_WRITE_REQUEST;                     // Report ID 0xF7
+  sensor->shtp_package.shtp_Data[1] = 0;                 // Reserved
+  sensor->shtp_package.shtp_Data[2] = num_words & 0xFF;  // Word count LSB
+  sensor->shtp_package.shtp_Data[3] =
+      (num_words >> 8) & 0xFF;                                 // Word count MSB
+  sensor->shtp_package.shtp_Data[4] = frs_type & 0xFF;         // FRS type LSB
+  sensor->shtp_package.shtp_Data[5] = (frs_type >> 8) & 0xFF;  // FRS type MSB
+
+  status &= send_Data(sensor, CHANNEL_CONTROL, 6);
+
+  // Wait for Write Response
+  status &= check_Command_Success(sensor, status);
+  if (status == D_ERR ||
+      sensor->shtp_package.shtp_Data[0] != SHTP_REPORT_FRS_WRITE_RESPONSE) {
+    return D_ERR;
+  }
+
+  uint8_t frs_status = sensor->shtp_package.shtp_Data[1];
+  if (frs_status != 4) {
+    // Sensor not ready for write mode
+    return D_ERR;
+  }
+  delay_Us(1000);
+
+  // Send FRS Write Data Packets
+  uint16_t offset = 0;
+  while (offset < num_words) {
+    sensor->shtp_package.shtp_Data[0] = SHTP_REPORT_FRS_WRITE_DATA_REQUEST;
+    sensor->shtp_package.shtp_Data[1] = 0;                     // Reserved
+    sensor->shtp_package.shtp_Data[2] = offset & 0xFF;         // Offset LSB
+    sensor->shtp_package.shtp_Data[3] = (offset >> 8) & 0xFF;  // Offset MSB
+
+    // Pack first word
+    if (offset < num_words) {
+      sensor->shtp_package.shtp_Data[4] = words[offset] & 0xFF;
+      sensor->shtp_package.shtp_Data[5] = (words[offset] >> 8) & 0xFF;
+      sensor->shtp_package.shtp_Data[6] = (words[offset] >> 16) & 0xFF;
+      sensor->shtp_package.shtp_Data[7] = (words[offset] >> 24) & 0xFF;
+      offset++;
+    } else {
+      sensor->shtp_package.shtp_Data[4] = 0;
+      sensor->shtp_package.shtp_Data[5] = 0;
+      sensor->shtp_package.shtp_Data[6] = 0;
+      sensor->shtp_package.shtp_Data[7] = 0;
+    }
+
+    // Pack second word if available
+    if (offset < num_words) {
+      sensor->shtp_package.shtp_Data[8] = words[offset] & 0xFF;
+      sensor->shtp_package.shtp_Data[9] = (words[offset] >> 8) & 0xFF;
+      sensor->shtp_package.shtp_Data[10] = (words[offset] >> 16) & 0xFF;
+      sensor->shtp_package.shtp_Data[11] = (words[offset] >> 24) & 0xFF;
+      offset++;
+    } else {
+      sensor->shtp_package.shtp_Data[8] = 0;
+      sensor->shtp_package.shtp_Data[9] = 0;
+      sensor->shtp_package.shtp_Data[10] = 0;
+      sensor->shtp_package.shtp_Data[11] = 0;
+    }
+
+    status &= send_Data(sensor, CHANNEL_CONTROL, 12);
+    if (status == D_ERR) return D_ERR;
+
+    // Wait for Write Response after each data packet
+    /* TODO: Sensor responds with "4 - write mode entered or ready" after the
+     * write request but with "6 – data received while not in write mode" after
+     * the data request. We are looking for "0 – word(s) received".The write
+     * operation therefore fails. Problem so far unclear.*/
+    status &= check_Command_Success(sensor, status);
+    if (status == D_ERR ||
+        sensor->shtp_package.shtp_Data[0] != SHTP_REPORT_FRS_WRITE_RESPONSE) {
+      return D_ERR;
+    }
+    frs_status = sensor->shtp_package.shtp_Data[1];
+    uint16_t response_offset = sensor->shtp_package.shtp_Data[2] |
+                               (sensor->shtp_package.shtp_Data[3] << 8);
+
+    // Offset consistency check
+    uint16_t expected_offset = offset - 1;  // last written word
+    if (response_offset != expected_offset) {
+      return D_ERR;  // mismatch -> error
+    }
+
+    // Check if data is received or write is completed
+    switch (frs_status) {
+      case 0:
+        break;
+      case 3:
+        offset = num_words;
+        break;
+      default:
+        return D_ERR;
+    }
+  }
+
+  if (frs_status == 3) {
+    return N_ERR;  // Success
+  }
+
+  return D_ERR;
+}
+
+/**
+ * @brief Erases an FRS record on the target sensor.
+ *
+ * @note This function sends an FRS Write Request (0xF7) with the specified
+ *       record type and a length of 0 words, which instructs the device to
+ *       erase the record.
+ *
+ * @param *sensor   Pointer to the sensor meta data structure, which contains
+ *                  the SHTP packet buffer and communication state.
+ * @param frs_type  The FRS record type to erase (see datasheet, Figure 26).
+ *
+ * @return Status code:
+ *         - @c N_ERR if the erase completed successfully
+ *         - @c D_ERR if an error occurred (communication failure, invalid
+ * response, or device reported an error status).
+ */
+
+uint8_t erase_FRS(sensor_meta *sensor, uint16_t frs_type) {
+  // No data pointer, length_words = 0 → erase mode
+  return write_FRS(sensor, frs_type, NULL, 0);
 }
