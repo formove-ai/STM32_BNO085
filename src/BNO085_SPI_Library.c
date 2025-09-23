@@ -2091,10 +2091,9 @@ uint8_t read_FRS(sensor_meta *sensor, uint16_t frs_type, uint32_t *buffer,
   uint8_t status = N_ERR;
   uint16_t offset = 0;
   uint16_t timeout_counter = 0;
+  *words_read = 0;
 
-  *words_read = 0;  // initialize
-
-  // Send FRS Read Request (0xF4)
+  // Send FRS Read Request
   sensor->shtp_package.shtp_Data[0] = SHTP_REPORT_FRS_READ_REQUEST;  // 0xF4
   sensor->shtp_package.shtp_Data[1] = 0;                             // Reserved
   sensor->shtp_package.shtp_Data[2] = 0;                             // Reserved
@@ -2108,8 +2107,7 @@ uint8_t read_FRS(sensor_meta *sensor, uint16_t frs_type, uint32_t *buffer,
   if (status == D_ERR) return D_ERR;
 
   // Wait for Read Response(s)
-  bool done = false;
-  while (!done) {
+  while (1) {
     status &= check_Command_Success(sensor, status);
     if (status == D_ERR) return D_ERR;
 
@@ -2123,55 +2121,39 @@ uint8_t read_FRS(sensor_meta *sensor, uint16_t frs_type, uint32_t *buffer,
       continue;  // ignore unrelated packets
     }
 
-    // Extract status and data length
-    uint8_t byte1 = sensor->shtp_package.shtp_Data[1];
-    uint8_t data_len = (byte1 >> 4) & 0x0F;  // upper nibble = number of words
-    uint8_t frs_status = byte1 & 0x0F;       // lower nibble = status
+    // Extract status, data length and offset
+    uint8_t num_words = (sensor->shtp_package.shtp_Data[1] >> 4) & 0x0F;
+    uint8_t frs_status = sensor->shtp_package.shtp_Data[1] & 0x0F;
+    uint16_t offset = sensor->shtp_package.shtp_Data[2] |
+                      (sensor->shtp_package.shtp_Data[3] << 8);
 
-    switch (frs_status) {
-      case 0:  // no error, normal packet
-      case 2:  // busy, just wait for next packet
-        // Copy received words into buffer
-        for (uint8_t i = 0; i < data_len; i++) {
-          if ((offset + i) < max_words) {
-            uint16_t idx =
-                4 + i * 4;  // data0 = byte 4..7, data1 = byte 8..11, etc.
-            buffer[offset + i] =
-                ((uint32_t)sensor->shtp_package.shtp_Data[idx + 3] << 24) |
-                ((uint32_t)sensor->shtp_package.shtp_Data[idx + 2] << 16) |
-                ((uint32_t)sensor->shtp_package.shtp_Data[idx + 1] << 8) |
-                ((uint32_t)sensor->shtp_package.shtp_Data[idx]);
-          }
-        }
-        offset += data_len;
+    if (frs_status == 5) {
+      // Record empty → valid, but no data
+      words_read = 0;
+      break;
+    }
+
+    if (frs_status == 0 || frs_status == 3) {
+      // Copy words into buffer
+      for (uint8_t i = 0; i < num_words; i++) {
+        uint8_t data_index = 4 + i * 4;
+        buffer[offset + i] =
+            (sensor->shtp_package.shtp_Data[data_index]) |
+            (sensor->shtp_package.shtp_Data[data_index + 1] << 8) |
+            (sensor->shtp_package.shtp_Data[data_index + 2] << 16) |
+            (sensor->shtp_package.shtp_Data[data_index + 3] << 24);
+      }
+      words_read += num_words;
+
+      if (frs_status == 3) {
+        // Completed
         break;
-
-      case 3:  // read record completed
-        // Copy remaining words
-        for (uint8_t i = 0; i < data_len; i++) {
-          if ((offset + i) < max_words) {
-            uint16_t idx = 4 + i * 4;
-            buffer[offset + i] =
-                ((uint32_t)sensor->shtp_package.shtp_Data[idx + 3] << 24) |
-                ((uint32_t)sensor->shtp_package.shtp_Data[idx + 2] << 16) |
-                ((uint32_t)sensor->shtp_package.shtp_Data[idx + 1] << 8) |
-                ((uint32_t)sensor->shtp_package.shtp_Data[idx]);
-          }
-        }
-        offset += data_len;
-        done = true;  // finished reading
-        break;
-
-      case 1:   // unrecognized FRS type
-      case 5:   // record empty
-      case 8:   // device error
-      default:  // other reserved/deprecated codes
-        return D_ERR;
+      }
+    } else {
+      // Any other status = error
+      return D_ERR;
     }
   }
-
-  *words_read = offset;
-  return N_ERR;
 }
 
 /**
@@ -2253,9 +2235,9 @@ uint8_t write_FRS(sensor_meta *sensor, uint16_t frs_type, uint32_t *words,
 
     // Wait for Write Response after each data packet
     /* TODO: Sensor responds with "4 - write mode entered or ready" after the
-     * write request but with "6 – data received while not in write mode" after
-     * the data request. We are looking for "0 – word(s) received".The write
-     * operation therefore fails. Problem so far unclear.*/
+     * write request but with "6 – data received while not in write mode"
+     * after the data request. We are looking for "0 – word(s) received".The
+     * write operation therefore fails. Problem so far unclear.*/
     status &= check_Command_Success(sensor, status);
     if (status == D_ERR ||
         sensor->shtp_package.shtp_Data[0] != SHTP_REPORT_FRS_WRITE_RESPONSE) {
