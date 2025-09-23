@@ -2089,7 +2089,6 @@ void deassert_csn(sensor_meta *sensor) { csn(sensor->ports_pins, true); }
 uint8_t read_FRS(sensor_meta *sensor, uint16_t frs_type, uint32_t *buffer,
                  uint16_t max_words, uint16_t *words_read) {
   uint8_t status = N_ERR;
-  uint16_t offset = 0;
   uint16_t timeout_counter = 0;
   *words_read = 0;
 
@@ -2129,7 +2128,7 @@ uint8_t read_FRS(sensor_meta *sensor, uint16_t frs_type, uint32_t *buffer,
 
     if (frs_status == 5) {
       // Record empty → valid, but no data
-      words_read = 0;
+      *words_read = 0;
       break;
     }
 
@@ -2143,7 +2142,7 @@ uint8_t read_FRS(sensor_meta *sensor, uint16_t frs_type, uint32_t *buffer,
             (sensor->shtp_package.shtp_Data[data_index + 2] << 16) |
             (sensor->shtp_package.shtp_Data[data_index + 3] << 24);
       }
-      words_read += num_words;
+      *words_read += num_words;
 
       if (frs_status == 3) {
         // Completed
