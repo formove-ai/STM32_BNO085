@@ -2091,6 +2091,7 @@ uint8_t read_FRS(sensor_meta *sensor, uint16_t frs_type, uint32_t *buffer,
   uint8_t status = N_ERR;
   uint16_t timeout_counter = 0;
   *words_read = 0;
+  int16_t last_offset = -2;
 
   // Send FRS Read Request
   sensor->shtp_package.shtp_Data[0] = SHTP_REPORT_FRS_READ_REQUEST;  // 0xF4
@@ -2132,6 +2133,11 @@ uint8_t read_FRS(sensor_meta *sensor, uint16_t frs_type, uint32_t *buffer,
       break;
     }
 
+    if (offset != (last_offset + 2)) {
+      // Missed packet
+      return D_ERR;
+    }
+
     if (frs_status == 0 || frs_status == 3) {
       // Copy words into buffer
       for (uint8_t i = 0; i < num_words; i++) {
@@ -2143,6 +2149,7 @@ uint8_t read_FRS(sensor_meta *sensor, uint16_t frs_type, uint32_t *buffer,
             (sensor->shtp_package.shtp_Data[data_index + 3] << 24);
       }
       *words_read += num_words;
+      last_offset = offset;
 
       if (frs_status == 3) {
         // Completed
