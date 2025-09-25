@@ -2160,6 +2160,7 @@ uint8_t read_FRS(sensor_meta *sensor, uint16_t frs_type, uint32_t *buffer,
       return D_ERR;
     }
   }
+  return N_ERR;
 }
 
 /**
