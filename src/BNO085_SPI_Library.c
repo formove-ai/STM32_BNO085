@@ -1570,30 +1570,7 @@ uint8_t tare_IMU(sensor_meta *sensor, bool all_Axis) {
 
   // Send command
   status &= send_Command(sensor, SENSOR_COMMAND_TARE);
-
-  // If z axis Tare and (ARVR-Stabilized) Game Rotation Vector, use reset to
-  // start with new config (cf. [1], p. 42).
-  if ((sensor->rotation_vector_mode == SENSOR_REPORTID_GAME_ROTATION_VECTOR ||
-       sensor->rotation_vector_mode ==
-           SENSOR_REPORTID_ARVR_GAME_ROTATION_VECTOR) &&
-      (all_Axis == false)) {
-    // Softreset without clearing DCD, check success
-    status &= softreset_IMU(sensor);
-    status &= check_Command_Success(sensor, status);
-    // Enable again specific mode
-    if (sensor->rotation_vector_mode == SENSOR_REPORTID_GAME_ROTATION_VECTOR) {
-      status &= enable_GameRotationVector(
-          sensor, sensor->rotation_vector_report_frequency);
-      status &= check_Command_Success(sensor, status);
-    } else if (sensor->rotation_vector_mode ==
-               SENSOR_REPORTID_ARVR_GAME_ROTATION_VECTOR) {
-      status &= enable_ARVR_stabilized_GameRotationVector(
-          sensor, sensor->rotation_vector_report_frequency);
-      status &= check_Command_Success(sensor, status);
-    } else {
-      return D_ERR;
-    }
-  }
+  status &= check_Command_Success(sensor, status);
 
   if (status == N_ERR) {
     // command successful
@@ -1629,13 +1606,6 @@ uint8_t tare_IMU(sensor_meta *sensor, bool all_Axis) {
 // shtp_Data[11]: P8 Reserved
 uint8_t tare_persist_IMU(sensor_meta *sensor) {
   uint8_t status = N_ERR;
-
-  // Check if not (ARVR-Stabilized) Game Rotation Vector
-  if (sensor->rotation_vector_mode == SENSOR_REPORTID_GAME_ROTATION_VECTOR ||
-      sensor->rotation_vector_mode ==
-          SENSOR_REPORTID_ARVR_GAME_ROTATION_VECTOR) {
-    return D_ERR;
-  }
 
   // Check if IMU has found magnetic north in case of (ARVR-Stabilized) Rotation
   // Vector
