@@ -4,7 +4,7 @@
 
 ## Version
 
-[![Version](https://img.shields.io/badge/version-<VERSION>-blue)](https://github.com/formove-ai/STM32_BNO085/releases)
+[![Version](https://img.shields.io/badge/version-v0.0.1-blue)](https://github.com/formove-ai/STM32_BNO085/releases/tag/v0.0.1)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
@@ -145,7 +145,7 @@ if (data_available(sensor1) == true)
 
 ## Versioning
 
-Current release: **[`<VERSION>`](https://github.com/formove-ai/STM32_BNO085/releases/tag/<VERSION>)**
+Current release: **[`v0.0.1`](https://github.com/formove-ai/STM32_BNO085/releases/tag/v0.0.1)**
 
 ## Contributing
 
