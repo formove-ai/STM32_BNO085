@@ -34,6 +34,13 @@ const byte CHANNEL_GYRO = 5;
 #define SHTP_RESET_COMMAND_RESPONSE 1
 #define SHTP_RESET_COMMAND_REQUEST 1
 
+// FRS Read/Write (cf. [2], p. 41 ff.)
+#define SHTP_REPORT_FRS_READ_RESPONSE 0xF3
+#define SHTP_REPORT_FRS_READ_REQUEST 0xF4
+#define SHTP_REPORT_FRS_WRITE_RESPONSE 0xF5
+#define SHTP_REPORT_FRS_WRITE_DATA_REQUEST 0xF6
+#define SHTP_REPORT_FRS_WRITE_REQUEST 0xF7
+
 // Commands we want use (cf. [2], p. 44 f.; p. 47 ff.)
 #define SENSOR_COMMAND_TARE 0x03
 #define SENSOR_COMMAND_TARE_NOW 0x00
@@ -704,19 +711,9 @@ static uint16_t parse_CommandReport(sensor_meta *sensor) {
 
     // Response if Initialize Command or Clear DCD Reset Command
     if (command == SENSOR_COMMAND_INITIALIZE_RESPONSE ||
-        command == SENSOR_COMMAND_INITIALIZE_RESPONSE_UNSOLICITED) {
-      if (status_command == 0) {
-        // Success
-        return sensor->shtp_package.shtp_Data[0];
-      }
-      return D_ERR;
-    } else if (command == SENSOR_COMMAND_SAVE_DCD) {
-      if (status_command == 0) {
-        // Success
-        return sensor->shtp_package.shtp_Data[0];
-      }
-      return D_ERR;
-    } else if (command == SENSOR_COMMAND_ME_CAL) {
+        command == SENSOR_COMMAND_INITIALIZE_RESPONSE_UNSOLICITED ||
+        command == SENSOR_COMMAND_SAVE_DCD ||
+        command == SENSOR_COMMAND_ME_CAL) {
       if (status_command == 0) {
         // Success
         return sensor->shtp_package.shtp_Data[0];
@@ -732,8 +729,17 @@ static uint16_t parse_CommandReport(sensor_meta *sensor) {
   } else if (sensor->shtp_package.shtp_Data[0] ==
              SHTP_REPORT_PRODUCT_ID_RESPONSE) {
     return sensor->shtp_package.shtp_Data[0];
-  } else if (sensor->shtp_package.shtp_Data[0] ==  // Get Feature Response
+    // Get Feature Response
+  } else if (sensor->shtp_package.shtp_Data[0] ==
              SHTP_REPORT_GET_FEATURE_RESPONSE) {
+    return sensor->shtp_package.shtp_Data[0];
+    // FRS Read Response
+  } else if (sensor->shtp_package.shtp_Data[0] ==
+             SHTP_REPORT_FRS_READ_RESPONSE) {
+    return sensor->shtp_package.shtp_Data[0];
+    // FRS Write Response
+  } else if (sensor->shtp_package.shtp_Data[0] ==
+             SHTP_REPORT_FRS_WRITE_RESPONSE) {
     return sensor->shtp_package.shtp_Data[0];
   } else {
     // This sensor report ID is unhandled.
@@ -1806,8 +1812,7 @@ uint8_t reinitialize_IMU(sensor_meta *sensor) {
   for (uint8_t shtp_index_temp = 3; shtp_index_temp < 12; shtp_index_temp++) {
     sensor->shtp_package.shtp_Data[shtp_index_temp] = 0x00;
   }
-  sensor->shtp_package.shtp_Data[3] =
-      1;  // 0 would mean "no operation"
+  sensor->shtp_package.shtp_Data[3] = 1;  // 0 would mean "no operation"
 
   // Send command
   status &= send_Command(sensor, SENSOR_COMMAND_INITIALIZE);
@@ -2070,3 +2075,90 @@ uint8_t check_Command_Success(sensor_meta *sensor, uint8_t status_command) {
  * @param *sensor: Pointer to corresponding sensor meta data
  */
 void deassert_csn(sensor_meta *sensor) { csn(sensor->ports_pins, true); }
+
+/**
+ * @brief Read an FRS record from the sensor.
+ * @param *sensor: Pointer to corresponding sensor meta data
+ * @param frs_type: FRS record type to read (SH-2 Reference figure 26)
+ * @param buffer: Pointer to pre-allocated buffer to store 32-bit words
+ * @param max_words: Maximum number of words the buffer can hold
+ * @param *words_read: Pointer to variable that will contain the number of words
+ * read
+ * @return N_ERR if successful, D_ERR on error
+ */
+uint8_t read_FRS(sensor_meta *sensor, uint16_t frs_type, uint32_t *buffer,
+                 uint16_t max_words, uint16_t *words_read) {
+  uint8_t status = N_ERR;
+  uint16_t timeout_counter = 0;
+  *words_read = 0;
+  int16_t last_offset = -2;
+
+  // Send FRS Read Request
+  sensor->shtp_package.shtp_Data[0] = SHTP_REPORT_FRS_READ_REQUEST;  // 0xF4
+  sensor->shtp_package.shtp_Data[1] = 0;                             // Reserved
+  sensor->shtp_package.shtp_Data[2] = 0;                             // Reserved
+  sensor->shtp_package.shtp_Data[3] = 0;                             // Reserved
+  sensor->shtp_package.shtp_Data[4] = frs_type & 0xFF;         // FRS Type LSB
+  sensor->shtp_package.shtp_Data[5] = (frs_type >> 8) & 0xFF;  // FRS Type MSB
+  sensor->shtp_package.shtp_Data[6] = 0;                       // Reserved
+  sensor->shtp_package.shtp_Data[7] = 0;                       // Reserved
+
+  status &= send_Data(sensor, CHANNEL_CONTROL, 8);
+  if (status == D_ERR) return D_ERR;
+
+  // Wait for Read Response(s)
+  while (1) {
+    status &= check_Command_Success(sensor, status);
+    if (status == D_ERR) return D_ERR;
+
+    // Timeout protection
+    if (++timeout_counter >= 1000) {
+      return D_ERR;  // timed out waiting for response
+    }
+
+    // Check if this is a read response
+    if (sensor->shtp_package.shtp_Data[0] != SHTP_REPORT_FRS_READ_RESPONSE) {
+      continue;  // ignore unrelated packets
+    }
+
+    // Extract status, data length and offset
+    uint8_t num_words = (sensor->shtp_package.shtp_Data[1] >> 4) & 0x0F;
+    uint8_t frs_status = sensor->shtp_package.shtp_Data[1] & 0x0F;
+    uint16_t offset = sensor->shtp_package.shtp_Data[2] |
+                      (sensor->shtp_package.shtp_Data[3] << 8);
+
+    if (frs_status == 5) {
+      // Record empty → valid, but no data
+      *words_read = 0;
+      break;
+    }
+
+    if (offset != (last_offset + 2)) {
+      // Missed packet
+      return D_ERR;
+    }
+
+    if (frs_status == 0 || frs_status == 3) {
+      // Copy words into buffer
+      for (uint8_t i = 0; i < num_words; i++) {
+        uint8_t data_index = 4 + i * 4;
+        buffer[offset + i] =
+            (sensor->shtp_package.shtp_Data[data_index]) |
+            (sensor->shtp_package.shtp_Data[data_index + 1] << 8) |
+            (sensor->shtp_package.shtp_Data[data_index + 2] << 16) |
+            (sensor->shtp_package.shtp_Data[data_index + 3] << 24);
+      }
+      *words_read += num_words;
+      last_offset = offset;
+
+      if (frs_status == 3) {
+        // Completed
+        break;
+      }
+    } else {
+      // Any other status = error
+      return D_ERR;
+    }
+  }
+  return N_ERR;
+}
