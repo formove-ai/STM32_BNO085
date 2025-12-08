@@ -95,6 +95,7 @@ int16_t rotationVector_Q1 = 14;
 int16_t rotationVectorAccuracy_Q1 =
     12;  // Heading accuracy estimate in radians. The Q point is 12.
 int16_t accelerometer_Q1 = 8;  // ... the Q point is 8, see [2] pp. 66ff.
+int16_t magnetometer_Q1 = 4;  // ... the Q point is 4, see [2] pp. 70ff.
 
 // Debug
 bool debug_print = false;
@@ -1159,6 +1160,53 @@ bool data_available(sensor_meta *sensor) {
   // check periodically INTN Pins
   check_INTN(sensor);
   return (get_Readings(sensor) != 0);
+}
+
+/**
+ * Calculate the magnetometer component X with the specific Q point.
+ * @param *sensor: Pointer to corresponding sensor meta data
+ * @return: X component as a float
+ */
+float get_Magnetometer_X(sensor_meta *sensor) {
+  float a = fixpoint_to_float(sensor->magnetometer_data.raw_Mag_X,
+                              magnetometer_Q1);
+  sensor->magnetometer_data.Mag_X = a;
+  return a;
+}
+
+/**
+ * Calculate the magnetometer component Y with the specific Q point.
+ * @param *sensor: Pointer to corresponding sensor meta data
+ * @return: Y component as a float
+ */
+float get_Magnetometer_Y(sensor_meta *sensor) {
+  float a = fixpoint_to_float(sensor->magnetometer_data.raw_Mag_Y,
+                              magnetometer_Q1);
+  sensor->magnetometer_data.Mag_Y = a;
+  return a;
+}
+
+/**
+ * Calculate the magnetometer component Z with the specific Q point.
+ * @param *sensor: Pointer to corresponding sensor meta data
+ * @return: Z component as a float.
+ */
+float get_Magnetometer_Z(sensor_meta *sensor) {
+  float a = fixpoint_to_float(sensor->magnetometer_data.raw_Mag_Z,
+                              magnetometer_Q1);
+  sensor->magnetometer_data.Mag_Z = a;
+  return a;
+}
+
+/**
+ * @brief Return the magnetometer accuracy.
+ * @note: Assignment: 0 = Unreliable, 1 = Accuracy Low, 2 = Accuracy Medium, 3 =
+ * Accuracy High
+ * @param *sensor: Pointer to corresponding sensor meta data
+ * @return: Magentometer accuracy
+ */
+uint8_t get_Magnetometer_Accuracy(sensor_meta *sensor) {
+  return (sensor->magnetometer_data.magnetometer_Accuracy);
 }
 
 /**
