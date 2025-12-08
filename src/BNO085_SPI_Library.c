@@ -62,6 +62,7 @@ const byte CHANNEL_GYRO = 5;
 // Feature reports we want use and can get reports from (cf. [2], p. 38 f., p.
 // 71 f., p. 84 f.)
 #define SENSOR_REPORTID_ACCELEROMETER 0x01
+#define SENSOR_REPORTID_MAGNETIC_FIELD_CALIBRATED 0x03
 #define SENSOR_REPORTID_LINEAR_ACCELERATION 0x04
 #define SENSOR_REPORTID_GRAVITY 0x06
 #define SENSOR_REPORTID_ROTATION_VECTOR 0x05
@@ -94,6 +95,7 @@ int16_t rotationVector_Q1 = 14;
 int16_t rotationVectorAccuracy_Q1 =
     12;  // Heading accuracy estimate in radians. The Q point is 12.
 int16_t accelerometer_Q1 = 8;  // ... the Q point is 8, see [2] pp. 66ff.
+int16_t magnetometer_Q1 = 4;  // ... the Q point is 4, see [2] pp. 70ff.
 
 // Debug
 bool debug_print = false;
@@ -632,6 +634,11 @@ uint16_t parse_InputReport(sensor_meta *sensor) {
     sensor->gravity_data.raw_Accel_X = data1;
     sensor->gravity_data.raw_Accel_Y = data2;
     sensor->gravity_data.raw_Accel_Z = data3;
+  } else if (sensor->shtp_package.shtp_Data[5] == SENSOR_REPORTID_MAGNETIC_FIELD_CALIBRATED) {
+    sensor->magnetometer_data.magnetometer_Accuracy = status_report;
+    sensor->magnetometer_data.raw_Mag_X = data1;
+    sensor->magnetometer_data.raw_Mag_Y = data2;
+    sensor->magnetometer_data.raw_Mag_Z = data3;
   } else if (sensor->shtp_package.shtp_Data[5] ==
                  SENSOR_REPORTID_ROTATION_VECTOR ||
              sensor->shtp_package.shtp_Data[5] ==
@@ -987,6 +994,23 @@ uint8_t enable_Accelerometer(sensor_meta *sensor,
 }
 
 /**
+ * @brief Enables the report Magnetic Field Calibrated and sets the desired
+ * report delay (frequency).
+ * @param *sensor: Pointer to corresponding sensor meta data
+ * @param time_between_reports: Desired time in ms between two reports
+ * @return status: 1 no error occurred, 0 an error occurred
+ */
+uint8_t enable_MagneticFieldCalibrated(sensor_meta* sensor,
+                                       uint16_t time_between_reports) {
+  uint8_t status = N_ERR;
+  sensor->magneticfieldcalibrated_report_frequency = time_between_reports;
+  status &=
+      set_FeatureCommand(sensor, SENSOR_REPORTID_MAGNETIC_FIELD_CALIBRATED,
+                         time_between_reports, 0);
+  return status;
+}
+
+/**
  * @brief Enables the report Linear Acceleration and sets the desired report
  * delay (frequency).
  * @param *sensor: Pointer to corresponding sensor meta data
@@ -1141,6 +1165,53 @@ bool data_available(sensor_meta *sensor) {
   // check periodically INTN Pins
   check_INTN(sensor);
   return (get_Readings(sensor) != 0);
+}
+
+/**
+ * Calculate the magnetometer component X with the specific Q point.
+ * @param *sensor: Pointer to corresponding sensor meta data
+ * @return: X component as a float
+ */
+float get_Magnetometer_X(sensor_meta *sensor) {
+  float a = fixpoint_to_float(sensor->magnetometer_data.raw_Mag_X,
+                              magnetometer_Q1);
+  sensor->magnetometer_data.Mag_X = a;
+  return a;
+}
+
+/**
+ * Calculate the magnetometer component Y with the specific Q point.
+ * @param *sensor: Pointer to corresponding sensor meta data
+ * @return: Y component as a float
+ */
+float get_Magnetometer_Y(sensor_meta *sensor) {
+  float a = fixpoint_to_float(sensor->magnetometer_data.raw_Mag_Y,
+                              magnetometer_Q1);
+  sensor->magnetometer_data.Mag_Y = a;
+  return a;
+}
+
+/**
+ * Calculate the magnetometer component Z with the specific Q point.
+ * @param *sensor: Pointer to corresponding sensor meta data
+ * @return: Z component as a float.
+ */
+float get_Magnetometer_Z(sensor_meta *sensor) {
+  float a = fixpoint_to_float(sensor->magnetometer_data.raw_Mag_Z,
+                              magnetometer_Q1);
+  sensor->magnetometer_data.Mag_Z = a;
+  return a;
+}
+
+/**
+ * @brief Return the magnetometer accuracy.
+ * @note: Assignment: 0 = Unreliable, 1 = Accuracy Low, 2 = Accuracy Medium, 3 =
+ * Accuracy High
+ * @param *sensor: Pointer to corresponding sensor meta data
+ * @return: Magentometer accuracy
+ */
+uint8_t get_Magnetometer_Accuracy(sensor_meta *sensor) {
+  return (sensor->magnetometer_data.magnetometer_Accuracy);
 }
 
 /**
