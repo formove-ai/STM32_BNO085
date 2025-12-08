@@ -1,13 +1,10 @@
 /*
  * @file Sensor_Struct.h
  * @brief Structs of sensor meta data: Pin, ports, quaternions, info, shtp_data.
- *
- * See sensorsuit/experimental/imu_readout_library/README.md for more
- * information.
  */
 
-#ifndef SENSORSUIT_PROD_BNO085_SPI_LIB_BNO085_SPI_INCLUDE_SENSOR_STRUCT_H_
-#define SENSORSUIT_PROD_BNO085_SPI_LIB_BNO085_SPI_INCLUDE_SENSOR_STRUCT_H_
+#ifndef INCLUDE_SENSOR_STRUCT_H_
+#define INCLUDE_SENSOR_STRUCT_H_
 
 // --- Includes ------------------------------------------------------
 // Includes of standard libraries
@@ -75,6 +72,17 @@ typedef struct quaternion_data {
   uint16_t quat_Accuracy;
 } quaternion_data;
 
+// Struct for magnetometer data
+typedef struct magnetometer_data {
+  uint16_t raw_Mag_X;
+  uint16_t raw_Mag_Y;
+  uint16_t raw_Mag_Z;
+  float Mag_X;
+  float Mag_Y;
+  float Mag_Z;
+  uint16_t magnetometer_Accuracy;
+} magnetometer_data;
+
 // Struct for accelerometer data
 typedef struct accelerometer_data {
   uint16_t raw_Accel_X;
@@ -111,6 +119,7 @@ typedef struct sensor_meta {
   volatile uint8_t rotation_vector_mode;
   volatile uint16_t rotation_vector_report_frequency;
   volatile uint16_t accelerometer_report_frequency;
+  volatile uint16_t magneticfieldcalibrated_report_frequency;
   volatile uint16_t linear_acceleration_report_frequency;
   volatile uint16_t gravity_report_frequency;
   ports_pins ports_pins;
@@ -120,7 +129,8 @@ typedef struct sensor_meta {
   accelerometer_data accelerometer_data;
   linear_acceleration_data linear_acceleration_data;
   gravity_data gravity_data;
+  magnetometer_data magnetometer_data;
   additional_data additional_data;
 } sensor_meta;
 
-#endif  // SENSORSUIT_PROD_BNO085_SPI_LIB_BNO085_SPI_INCLUDE_SENSOR_STRUCT_H_
+#endif  // INCLUDE_SENSOR_STRUCT_H_

@@ -62,6 +62,7 @@ const byte CHANNEL_GYRO = 5;
 // Feature reports we want use and can get reports from (cf. [2], p. 38 f., p.
 // 71 f., p. 84 f.)
 #define SENSOR_REPORTID_ACCELEROMETER 0x01
+#define SENSOR_REPORTID_MAGNETIC_FIELD_CALIBRATED 0x03
 #define SENSOR_REPORTID_LINEAR_ACCELERATION 0x04
 #define SENSOR_REPORTID_GRAVITY 0x06
 #define SENSOR_REPORTID_ROTATION_VECTOR 0x05
@@ -983,6 +984,23 @@ uint8_t enable_Accelerometer(sensor_meta *sensor,
   sensor->accelerometer_report_frequency = time_between_reports;
   status &= set_FeatureCommand(sensor, SENSOR_REPORTID_ACCELEROMETER,
                                time_between_reports, 0);
+  return status;
+}
+
+/**
+ * @brief Enables the report Magnetic Field Calibrated and sets the desired
+ * report delay (frequency).
+ * @param *sensor: Pointer to corresponding sensor meta data
+ * @param time_between_reports: Desired time in ms between two reports
+ * @return status: 1 no error occurred, 0 an error occurred
+ */
+uint8_t enable_MagneticFieldCalibrated(sensor_meta* sensor,
+                                       uint16_t time_between_reports) {
+  uint8_t status = N_ERR;
+  sensor->magneticfieldcalibrated_report_frequency = time_between_reports;
+  status &=
+      set_FeatureCommand(sensor, SENSOR_REPORTID_MAGNETIC_FIELD_CALIBRATED,
+                         time_between_reports, 0);
   return status;
 }
 
