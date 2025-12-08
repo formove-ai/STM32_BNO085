@@ -634,6 +634,11 @@ uint16_t parse_InputReport(sensor_meta *sensor) {
     sensor->gravity_data.raw_Accel_X = data1;
     sensor->gravity_data.raw_Accel_Y = data2;
     sensor->gravity_data.raw_Accel_Z = data3;
+  } else if (sensor->shtp_package.shtp_Data[5] == SENSOR_REPORTID_MAGNETIC_FIELD_CALIBRATED) {
+    sensor->magnetometer_data.magnetometer_Accuracy = status_report;
+    sensor->magnetometer_data.raw_Mag_X = data1;
+    sensor->magnetometer_data.raw_Mag_Y = data2;
+    sensor->magnetometer_data.raw_Mag_Z = data3;
   } else if (sensor->shtp_package.shtp_Data[5] ==
                  SENSOR_REPORTID_ROTATION_VECTOR ||
              sensor->shtp_package.shtp_Data[5] ==
