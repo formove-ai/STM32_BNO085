@@ -2233,3 +2233,55 @@ uint8_t read_FRS(sensor_meta *sensor, uint16_t frs_type, uint32_t *buffer,
   }
   return N_ERR;
 }
+
+/**
+ * @brief Erases an FRS record on the target sensor.
+ *
+ * @note This function sends an FRS Write Request (0xF7) with the specified
+ *       record type and a length of 0 words, which instructs the device to
+ *       erase the record.
+ *
+ * @param *sensor   Pointer to the sensor meta data structure, which contains
+ *                  the SHTP packet buffer and communication state.
+ * @param frs_type  The FRS record type to erase (see datasheet, Figure 26).
+ *
+ * @return Status code:
+ *         - @c N_ERR if the erase completed successfully
+ *         - @c D_ERR if an error occurred (communication failure, invalid
+ * response, or device reported an error status).
+ */
+
+uint8_t erase_FRS(sensor_meta* sensor, uint16_t frs_type) {
+  uint8_t status = N_ERR;
+
+  // Send FRS Write Request
+  sensor->shtp_package.shtp_Data[0] =
+      SHTP_REPORT_FRS_WRITE_REQUEST;                           // Report ID 0xF7
+  sensor->shtp_package.shtp_Data[1] = 0;                       // Reserved
+  sensor->shtp_package.shtp_Data[2] = 0;                       // Word count LSB
+  sensor->shtp_package.shtp_Data[3] = 0;                       // Word count MSB
+  sensor->shtp_package.shtp_Data[4] = frs_type & 0xFF;         // FRS type LSB
+  sensor->shtp_package.shtp_Data[5] = (frs_type >> 8) & 0xFF;  // FRS type MSB
+
+  status &= send_Data(sensor, CHANNEL_CONTROL, 6);
+
+  // Wait for Write Response
+  status &= check_Command_Success(sensor, status);
+  if (status == D_ERR ||
+      sensor->shtp_package.shtp_Data[0] != SHTP_REPORT_FRS_WRITE_RESPONSE) {
+    return D_ERR;
+  }
+
+  uint8_t frs_status = sensor->shtp_package.shtp_Data[1];
+  if (frs_status = 3) {
+    // write completed
+    return N_ERR;
+  } else if (frs_status = 4) {
+    // write mode entered or ready
+    return N_ERR;
+  } else {
+    // Error
+    return D_ERR;
+  }
+  return N_ERR;
+}
