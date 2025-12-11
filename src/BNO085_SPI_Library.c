@@ -62,6 +62,7 @@ const byte CHANNEL_GYRO = 5;
 // Feature reports we want use and can get reports from (cf. [2], p. 38 f., p.
 // 71 f., p. 84 f.)
 #define SENSOR_REPORTID_ACCELEROMETER 0x01
+#define SENSOR_REPORTID_MAGNETIC_FIELD_CALIBRATED 0x03
 #define SENSOR_REPORTID_LINEAR_ACCELERATION 0x04
 #define SENSOR_REPORTID_GRAVITY 0x06
 #define SENSOR_REPORTID_ROTATION_VECTOR 0x05
@@ -94,6 +95,7 @@ int16_t rotationVector_Q1 = 14;
 int16_t rotationVectorAccuracy_Q1 =
     12;  // Heading accuracy estimate in radians. The Q point is 12.
 int16_t accelerometer_Q1 = 8;  // ... the Q point is 8, see [2] pp. 66ff.
+int16_t magnetometer_Q1 = 4;  // ... the Q point is 4, see [2] pp. 70ff.
 
 // Debug
 bool debug_print = false;
@@ -632,6 +634,11 @@ uint16_t parse_InputReport(sensor_meta *sensor) {
     sensor->gravity_data.raw_Accel_X = data1;
     sensor->gravity_data.raw_Accel_Y = data2;
     sensor->gravity_data.raw_Accel_Z = data3;
+  } else if (sensor->shtp_package.shtp_Data[5] == SENSOR_REPORTID_MAGNETIC_FIELD_CALIBRATED) {
+    sensor->magnetometer_data.magnetometer_Accuracy = status_report;
+    sensor->magnetometer_data.raw_Mag_X = data1;
+    sensor->magnetometer_data.raw_Mag_Y = data2;
+    sensor->magnetometer_data.raw_Mag_Z = data3;
   } else if (sensor->shtp_package.shtp_Data[5] ==
                  SENSOR_REPORTID_ROTATION_VECTOR ||
              sensor->shtp_package.shtp_Data[5] ==
@@ -987,6 +994,23 @@ uint8_t enable_Accelerometer(sensor_meta *sensor,
 }
 
 /**
+ * @brief Enables the report Magnetic Field Calibrated and sets the desired
+ * report delay (frequency).
+ * @param *sensor: Pointer to corresponding sensor meta data
+ * @param time_between_reports: Desired time in ms between two reports
+ * @return status: 1 no error occurred, 0 an error occurred
+ */
+uint8_t enable_MagneticFieldCalibrated(sensor_meta* sensor,
+                                       uint16_t time_between_reports) {
+  uint8_t status = N_ERR;
+  sensor->magneticfieldcalibrated_report_frequency = time_between_reports;
+  status &=
+      set_FeatureCommand(sensor, SENSOR_REPORTID_MAGNETIC_FIELD_CALIBRATED,
+                         time_between_reports, 0);
+  return status;
+}
+
+/**
  * @brief Enables the report Linear Acceleration and sets the desired report
  * delay (frequency).
  * @param *sensor: Pointer to corresponding sensor meta data
@@ -1141,6 +1165,53 @@ bool data_available(sensor_meta *sensor) {
   // check periodically INTN Pins
   check_INTN(sensor);
   return (get_Readings(sensor) != 0);
+}
+
+/**
+ * Calculate the magnetometer component X with the specific Q point.
+ * @param *sensor: Pointer to corresponding sensor meta data
+ * @return: X component as a float
+ */
+float get_Magnetometer_X(sensor_meta *sensor) {
+  float a = fixpoint_to_float(sensor->magnetometer_data.raw_Mag_X,
+                              magnetometer_Q1);
+  sensor->magnetometer_data.Mag_X = a;
+  return a;
+}
+
+/**
+ * Calculate the magnetometer component Y with the specific Q point.
+ * @param *sensor: Pointer to corresponding sensor meta data
+ * @return: Y component as a float
+ */
+float get_Magnetometer_Y(sensor_meta *sensor) {
+  float a = fixpoint_to_float(sensor->magnetometer_data.raw_Mag_Y,
+                              magnetometer_Q1);
+  sensor->magnetometer_data.Mag_Y = a;
+  return a;
+}
+
+/**
+ * Calculate the magnetometer component Z with the specific Q point.
+ * @param *sensor: Pointer to corresponding sensor meta data
+ * @return: Z component as a float.
+ */
+float get_Magnetometer_Z(sensor_meta *sensor) {
+  float a = fixpoint_to_float(sensor->magnetometer_data.raw_Mag_Z,
+                              magnetometer_Q1);
+  sensor->magnetometer_data.Mag_Z = a;
+  return a;
+}
+
+/**
+ * @brief Return the magnetometer accuracy.
+ * @note: Assignment: 0 = Unreliable, 1 = Accuracy Low, 2 = Accuracy Medium, 3 =
+ * Accuracy High
+ * @param *sensor: Pointer to corresponding sensor meta data
+ * @return: Magentometer accuracy
+ */
+uint8_t get_Magnetometer_Accuracy(sensor_meta *sensor) {
+  return (sensor->magnetometer_data.magnetometer_Accuracy);
 }
 
 /**
@@ -2134,122 +2205,6 @@ uint8_t read_FRS(sensor_meta *sensor, uint16_t frs_type, uint32_t *buffer,
 }
 
 /**
- * @brief Write a block of words into an FRS record.
- * @param sensor: Pointer to sensor metadata
- * @param frs_type: FRS record type
- * @param words: Pointer to array of 32-bit words to be written
- * @param num_words: Number of 32-bit words in the array
- * @return status: N_ERR if success, D_ERR otherwise
- */
-uint8_t write_FRS(sensor_meta *sensor, uint16_t frs_type, uint32_t *words,
-                  uint16_t num_words) {
-  uint8_t status = N_ERR;
-
-  // Send FRS Write Request
-  sensor->shtp_package.shtp_Data[0] =
-      SHTP_REPORT_FRS_WRITE_REQUEST;                     // Report ID 0xF7
-  sensor->shtp_package.shtp_Data[1] = 0;                 // Reserved
-  sensor->shtp_package.shtp_Data[2] = num_words & 0xFF;  // Word count LSB
-  sensor->shtp_package.shtp_Data[3] =
-      (num_words >> 8) & 0xFF;                                 // Word count MSB
-  sensor->shtp_package.shtp_Data[4] = frs_type & 0xFF;         // FRS type LSB
-  sensor->shtp_package.shtp_Data[5] = (frs_type >> 8) & 0xFF;  // FRS type MSB
-
-  status &= send_Data(sensor, CHANNEL_CONTROL, 6);
-
-  // Wait for Write Response
-  status &= check_Command_Success(sensor, status);
-  if (status == D_ERR ||
-      sensor->shtp_package.shtp_Data[0] != SHTP_REPORT_FRS_WRITE_RESPONSE) {
-    return D_ERR;
-  }
-
-  uint8_t frs_status = sensor->shtp_package.shtp_Data[1];
-  if (frs_status != 4) {
-    // Sensor not ready for write mode
-    return D_ERR;
-  }
-  delay_Us(1000);
-
-  // Send FRS Write Data Packets
-  uint16_t offset = 0;
-  while (offset < num_words) {
-    sensor->shtp_package.shtp_Data[0] = SHTP_REPORT_FRS_WRITE_DATA_REQUEST;
-    sensor->shtp_package.shtp_Data[1] = 0;                     // Reserved
-    sensor->shtp_package.shtp_Data[2] = offset & 0xFF;         // Offset LSB
-    sensor->shtp_package.shtp_Data[3] = (offset >> 8) & 0xFF;  // Offset MSB
-
-    // Pack first word
-    if (offset < num_words) {
-      sensor->shtp_package.shtp_Data[4] = words[offset] & 0xFF;
-      sensor->shtp_package.shtp_Data[5] = (words[offset] >> 8) & 0xFF;
-      sensor->shtp_package.shtp_Data[6] = (words[offset] >> 16) & 0xFF;
-      sensor->shtp_package.shtp_Data[7] = (words[offset] >> 24) & 0xFF;
-      offset++;
-    } else {
-      sensor->shtp_package.shtp_Data[4] = 0;
-      sensor->shtp_package.shtp_Data[5] = 0;
-      sensor->shtp_package.shtp_Data[6] = 0;
-      sensor->shtp_package.shtp_Data[7] = 0;
-    }
-
-    // Pack second word if available
-    if (offset < num_words) {
-      sensor->shtp_package.shtp_Data[8] = words[offset] & 0xFF;
-      sensor->shtp_package.shtp_Data[9] = (words[offset] >> 8) & 0xFF;
-      sensor->shtp_package.shtp_Data[10] = (words[offset] >> 16) & 0xFF;
-      sensor->shtp_package.shtp_Data[11] = (words[offset] >> 24) & 0xFF;
-      offset++;
-    } else {
-      sensor->shtp_package.shtp_Data[8] = 0;
-      sensor->shtp_package.shtp_Data[9] = 0;
-      sensor->shtp_package.shtp_Data[10] = 0;
-      sensor->shtp_package.shtp_Data[11] = 0;
-    }
-
-    status &= send_Data(sensor, CHANNEL_CONTROL, 12);
-    if (status == D_ERR) return D_ERR;
-
-    // Wait for Write Response after each data packet
-    /* TODO: Sensor responds with "4 - write mode entered or ready" after the
-     * write request but with "6 – data received while not in write mode"
-     * after the data request. We are looking for "0 – word(s) received".The
-     * write operation therefore fails. Problem so far unclear.*/
-    status &= check_Command_Success(sensor, status);
-    if (status == D_ERR ||
-        sensor->shtp_package.shtp_Data[0] != SHTP_REPORT_FRS_WRITE_RESPONSE) {
-      return D_ERR;
-    }
-    frs_status = sensor->shtp_package.shtp_Data[1];
-    uint16_t response_offset = sensor->shtp_package.shtp_Data[2] |
-                               (sensor->shtp_package.shtp_Data[3] << 8);
-
-    // Offset consistency check
-    uint16_t expected_offset = offset - 1;  // last written word
-    if (response_offset != expected_offset) {
-      return D_ERR;  // mismatch -> error
-    }
-
-    // Check if data is received or write is completed
-    switch (frs_status) {
-      case 0:
-        break;
-      case 3:
-        offset = num_words;
-        break;
-      default:
-        return D_ERR;
-    }
-  }
-
-  if (frs_status == 3) {
-    return N_ERR;  // Success
-  }
-
-  return D_ERR;
-}
-
-/**
  * @brief Erases an FRS record on the target sensor.
  *
  * @note This function sends an FRS Write Request (0xF7) with the specified
@@ -2265,8 +2220,37 @@ uint8_t write_FRS(sensor_meta *sensor, uint16_t frs_type, uint32_t *words,
  *         - @c D_ERR if an error occurred (communication failure, invalid
  * response, or device reported an error status).
  */
+uint8_t erase_FRS(sensor_meta* sensor, uint16_t frs_type) {
+  uint8_t status = N_ERR;
 
-uint8_t erase_FRS(sensor_meta *sensor, uint16_t frs_type) {
-  // No data pointer, length_words = 0 → erase mode
-  return write_FRS(sensor, frs_type, NULL, 0);
+  // Send FRS Write Request
+  sensor->shtp_package.shtp_Data[0] =
+      SHTP_REPORT_FRS_WRITE_REQUEST;                           // Report ID 0xF7
+  sensor->shtp_package.shtp_Data[1] = 0;                       // Reserved
+  sensor->shtp_package.shtp_Data[2] = 0;                       // Word count LSB
+  sensor->shtp_package.shtp_Data[3] = 0;                       // Word count MSB
+  sensor->shtp_package.shtp_Data[4] = frs_type & 0xFF;         // FRS type LSB
+  sensor->shtp_package.shtp_Data[5] = (frs_type >> 8) & 0xFF;  // FRS type MSB
+
+  status &= send_Data(sensor, CHANNEL_CONTROL, 6);
+
+  // Wait for Write Response
+  status &= check_Command_Success(sensor, status);
+  if (status == D_ERR ||
+      sensor->shtp_package.shtp_Data[0] != SHTP_REPORT_FRS_WRITE_RESPONSE) {
+    return D_ERR;
+  }
+
+  uint8_t frs_status = sensor->shtp_package.shtp_Data[1];
+  if (frs_status = 3) {
+    // write completed
+    return N_ERR;
+  } else if (frs_status = 4) {
+    // write mode entered or ready
+    return N_ERR;
+  } else {
+    // Error
+    return D_ERR;
+  }
+  return N_ERR;
 }
