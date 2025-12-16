@@ -75,7 +75,6 @@ uint8_t get_Quat_Accuracy(sensor_meta *sensor);
 uint8_t get_StabilityClassifier(sensor_meta *sensor);
 void update_TapDetector(sensor_meta *sensor);
 uint8_t get_ProductID(sensor_meta *sensor);
-uint8_t get_Reset_Reason(sensor_meta *sensor);
 const char* get_Reset_Reason_String(uint8_t reset_reason);
 uint8_t check_Connection_IMU(sensor_meta *sensor);
 uint8_t tare_IMU(sensor_meta *sensor, bool all_Axis);
