@@ -1468,8 +1468,8 @@ void update_TapDetector(sensor_meta *sensor) {
 }
 
 /**
- * @brief Gets the Product ID via Product ID Request, waits for the response and
- * stores data.
+ * @brief Gets the Product ID and reset reason via Product ID Request, waits
+ * for the response and stores the data in the sensor struct.
  * @param *sensor: Pointer to corresponding sensor meta data
  * @return: status, 1 no error occurred, 0 error occurred
  */
@@ -1514,37 +1514,6 @@ uint8_t get_ProductID(sensor_meta *sensor) {
       sensor->info.SW_Version_Patch =
           ((uint16_t)sensor->shtp_package.shtp_Data[13] << 8) |
           ((uint16_t)sensor->shtp_package.shtp_Data[12]);
-
-      // Product ID Response complete
-      return status;
-    }
-  }
-
-  // Error
-  status = D_ERR;
-  return status;
-}
-
-/**
- * @brief Reads and stores the reset reason for the last reset in sensor struct.
- * @note: Not working for softreset_IMU(), because softreset_IMU() is executed
- * on an other channel.
- * @note: Assignment: 0 = Not applicable, 1 = Power on reset, 2 = Internal
- * System Reset, 3 = Watchdog Timeout, 4 = External reset, 5 = Other
- * @param *sensor: Pointer to corresponding sensor meta data
- * @return: status, 1 no error occurred, 0 error occurred
- */
-uint8_t get_Reset_Reason(sensor_meta *sensor) {
-  uint8_t status = N_ERR;
-
-  // Check reset reason via Product ID Request and Response (cf. [2], p.39 f.)
-  status &= get_ProductID(sensor);
-
-  if (status == N_ERR) {
-    if (sensor->shtp_package.shtp_Data[0] == SHTP_REPORT_PRODUCT_ID_RESPONSE) {
-      // Store product id response (cf. [2], p. 39 f.)
-      // Get reset reason (byte 1)
-      sensor->reset_reason = sensor->shtp_package.shtp_Data[1];
 
       // Product ID Response complete
       return status;
