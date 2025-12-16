@@ -1557,6 +1557,30 @@ uint8_t get_Reset_Reason(sensor_meta *sensor) {
 }
 
 /**
+ * @brief Returns a human-readable string for the reset reason code.
+ * @param reset_reason: Reset reason code from sensor->reset_reason
+ * @return: Pointer to constant string describing the reset reason
+ */
+const char* get_Reset_Reason_String(uint8_t reset_reason) {
+  switch (reset_reason) {
+    case RESET_REASON_NOT_APPLICABLE:
+      return "Not applicable";
+    case RESET_REASON_POWER_ON:
+      return "Power on reset";
+    case RESET_REASON_INTERNAL_SYSTEM:
+      return "Internal system reset";
+    case RESET_REASON_WATCHDOG_TIMEOUT:
+      return "Watchdog timeout";
+    case RESET_REASON_EXTERNAL_RESET:
+      return "External reset";
+    case RESET_REASON_OTHER:
+      return "Other";
+    default:
+      return "Unknown reset reason";
+  }
+}
+
+/**
  * @brief Checks the connection of IMU via Product ID Request and Response.
  * @param *sensor: Pointer to corresponding sensor meta data
  * @return: status, 1 no error occurred, 0 error occurred

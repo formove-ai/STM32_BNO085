@@ -24,6 +24,14 @@
 // There are 6 command channels.
 #define CHANNEL_MAX_NUMBER 6
 
+// Reset reason constants (cf. SH-2 Reference Manual, p.40, Product ID Response)
+#define RESET_REASON_NOT_APPLICABLE 0    // Not applicable
+#define RESET_REASON_POWER_ON 1          // Power on reset
+#define RESET_REASON_INTERNAL_SYSTEM 2   // Internal system reset
+#define RESET_REASON_WATCHDOG_TIMEOUT 3  // Watchdog timeout
+#define RESET_REASON_EXTERNAL_RESET 4    // External reset
+#define RESET_REASON_OTHER 5             // Other
+
 // --- Sensor structs -------------------------------------------------
 // Struct for ports and pins of sensor
 typedef struct ports_pins {
