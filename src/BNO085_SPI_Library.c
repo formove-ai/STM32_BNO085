@@ -1490,6 +1490,8 @@ uint8_t get_ProductID(sensor_meta *sensor) {
   if (status == N_ERR) {
     if (sensor->shtp_package.shtp_Data[0] == SHTP_REPORT_PRODUCT_ID_RESPONSE) {
       // Store product id response (cf. [2], p. 39 f.)
+      // Get reset reason (byte 1)
+      sensor->reset_reason = sensor->shtp_package.shtp_Data[1];
       // Get SW Version Major (byte 2)
       sensor->info.SW_Version_Major = sensor->shtp_package.shtp_Data[2];
       // Get SW Version Minor (byte 3)
