@@ -39,9 +39,9 @@ typedef struct ports_pins {
 typedef struct sensor_info {
   uint8_t SW_Version_Major;
   uint8_t SW_Version_Minor;
-  uint8_t SW_Part_Number;
-  uint8_t SW_Build_Number;
-  uint8_t SW_Version_Patch;
+  uint32_t SW_Part_Number;
+  uint32_t SW_Build_Number;
+  uint16_t SW_Version_Patch;
 } sensor_info;
 
 // Struct for shtp data
