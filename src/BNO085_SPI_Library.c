@@ -1490,6 +1490,8 @@ uint8_t get_ProductID(sensor_meta *sensor) {
   if (status == N_ERR) {
     if (sensor->shtp_package.shtp_Data[0] == SHTP_REPORT_PRODUCT_ID_RESPONSE) {
       // Store product id response (cf. [2], p. 39 f.)
+      // Get reset reason (byte 1)
+      sensor->reset_reason = sensor->shtp_package.shtp_Data[1];
       // Get SW Version Major (byte 2)
       sensor->info.SW_Version_Major = sensor->shtp_package.shtp_Data[2];
       // Get SW Version Minor (byte 3)
@@ -1552,6 +1554,30 @@ uint8_t get_Reset_Reason(sensor_meta *sensor) {
   // Error
   status = D_ERR;
   return status;
+}
+
+/**
+ * @brief Returns a human-readable string for the reset reason code.
+ * @param reset_reason: Reset reason code from sensor->reset_reason
+ * @return: Pointer to constant string describing the reset reason
+ */
+const char* get_Reset_Reason_String(uint8_t reset_reason) {
+  switch (reset_reason) {
+    case RESET_REASON_NOT_APPLICABLE:
+      return "Not applicable";
+    case RESET_REASON_POWER_ON:
+      return "Power on reset";
+    case RESET_REASON_INTERNAL_SYSTEM:
+      return "Internal system reset";
+    case RESET_REASON_WATCHDOG_TIMEOUT:
+      return "Watchdog timeout";
+    case RESET_REASON_EXTERNAL_RESET:
+      return "External reset";
+    case RESET_REASON_OTHER:
+      return "Other";
+    default:
+      return "Unknown reset reason";
+  }
 }
 
 /**
