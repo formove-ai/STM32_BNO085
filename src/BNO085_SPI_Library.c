@@ -2268,10 +2268,10 @@ uint8_t erase_FRS(sensor_meta* sensor, uint16_t frs_type) {
   }
 
   uint8_t frs_status = sensor->shtp_package.shtp_Data[1];
-  if (frs_status = 3) {
+  if (frs_status == 3) {
     // write completed
     return N_ERR;
-  } else if (frs_status = 4) {
+  } else if (frs_status == 4) {
     // write mode entered or ready
     return N_ERR;
   } else {
