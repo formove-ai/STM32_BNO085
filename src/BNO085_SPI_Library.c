@@ -71,6 +71,7 @@ const byte CHANNEL_GYRO = 5;
 #define SENSOR_REPORTID_ARVR_GAME_ROTATION_VECTOR 0x29
 #define SENSOR_REPORTID_TAP_DETECTOR 0x10
 #define SENSOR_REPORTID_STABILITY_CLASSIFIER 0x13
+#define SENSOR_REPORTID_RAW_MAGNETOMETER 0x16
 
 // Reset of the executable channel, reset complete packet (cf. [1], p.23, figure
 // 1-27)
@@ -640,6 +641,20 @@ uint16_t parse_InputReport(sensor_meta *sensor) {
     sensor->magnetometer_data.raw_Mag_Y = data2;
     sensor->magnetometer_data.raw_Mag_Z = data3;
   } else if (sensor->shtp_package.shtp_Data[5] ==
+             SENSOR_REPORTID_RAW_MAGNETOMETER) {
+    uint32_t timestamp = 0;
+    if (data_Length - 5 > 11) {
+      timestamp = ((uint32_t)sensor->shtp_package.shtp_Data[5 + 13] << 24) |
+                  ((uint32_t)sensor->shtp_package.shtp_Data[5 + 12] << 16) |
+                  ((uint32_t)sensor->shtp_package.shtp_Data[5 + 11] << 8) |
+                  ((uint32_t)sensor->shtp_package.shtp_Data[5 + 10] << 0);
+    }
+    sensor->raw_magnetometer_data.accuracy = status_report;
+    sensor->raw_magnetometer_data.raw_X = (int16_t)data1;
+    sensor->raw_magnetometer_data.raw_Y = (int16_t)data2;
+    sensor->raw_magnetometer_data.raw_Z = (int16_t)data3;
+    sensor->raw_magnetometer_data.timestamp = timestamp;
+  } else if (sensor->shtp_package.shtp_Data[5] ==
                  SENSOR_REPORTID_ROTATION_VECTOR ||
              sensor->shtp_package.shtp_Data[5] ==
                  SENSOR_REPORTID_GAME_ROTATION_VECTOR ||
@@ -1011,6 +1026,23 @@ uint8_t enable_MagneticFieldCalibrated(sensor_meta* sensor,
 }
 
 /**
+ * @brief Enables the report Raw Magnetometer and sets the desired report delay
+ * (frequency).
+ * @note Raw reports are unscaled sensor values (typically ADC counts).
+ * @param *sensor: Pointer to corresponding sensor meta data
+ * @param time_between_reports: Desired time in ms between two reports
+ * @return status: 1 no error occurred, 0 an error occurred
+ */
+uint8_t enable_RawMagnetometer(sensor_meta *sensor,
+                               uint16_t time_between_reports) {
+  uint8_t status = N_ERR;
+  sensor->raw_magnetometer_report_frequency = time_between_reports;
+  status &= set_FeatureCommand(sensor, SENSOR_REPORTID_RAW_MAGNETOMETER,
+                               time_between_reports, 0);
+  return status;
+}
+
+/**
  * @brief Enables the report Linear Acceleration and sets the desired report
  * delay (frequency).
  * @param *sensor: Pointer to corresponding sensor meta data
@@ -1212,6 +1244,26 @@ float get_Magnetometer_Z(sensor_meta *sensor) {
  */
 uint8_t get_Magnetometer_Accuracy(sensor_meta *sensor) {
   return (sensor->magnetometer_data.magnetometer_Accuracy);
+}
+
+int16_t get_RawMagnetometer_X(sensor_meta *sensor) {
+  return sensor->raw_magnetometer_data.raw_X;
+}
+
+int16_t get_RawMagnetometer_Y(sensor_meta *sensor) {
+  return sensor->raw_magnetometer_data.raw_Y;
+}
+
+int16_t get_RawMagnetometer_Z(sensor_meta *sensor) {
+  return sensor->raw_magnetometer_data.raw_Z;
+}
+
+uint8_t get_RawMagnetometer_Accuracy(sensor_meta *sensor) {
+  return sensor->raw_magnetometer_data.accuracy;
+}
+
+uint32_t get_RawMagnetometer_Timestamp(sensor_meta *sensor) {
+  return sensor->raw_magnetometer_data.timestamp;
 }
 
 /**
