@@ -39,6 +39,8 @@ uint8_t softresetDCD_IMU(sensor_meta *sensor);
 bool get_and_clear_Reset_Status(sensor_meta *sensor);
 uint8_t enable_Accelerometer(sensor_meta *sensor,
                              uint16_t time_between_reports);
+uint8_t enable_RawAccelerometer(sensor_meta *sensor,
+                                uint16_t time_between_reports);
 uint8_t enable_LinearAcceleration(sensor_meta *sensor,
                                   uint16_t time_between_reports);
 uint8_t enable_Gravity(sensor_meta *sensor, uint16_t time_between_reports);
@@ -58,6 +60,11 @@ float get_Accelerometer_X(sensor_meta *sensor);
 float get_Accelerometer_Y(sensor_meta *sensor);
 float get_Accelerometer_Z(sensor_meta *sensor);
 uint8_t get_Accelerometer_Accuracy(sensor_meta *sensor);
+int16_t get_RawAccelerometer_X(sensor_meta *sensor);
+int16_t get_RawAccelerometer_Y(sensor_meta *sensor);
+int16_t get_RawAccelerometer_Z(sensor_meta *sensor);
+uint8_t get_RawAccelerometer_Accuracy(sensor_meta *sensor);
+uint32_t get_RawAccelerometer_Timestamp(sensor_meta *sensor);
 float get_LinearAcceleration_X(sensor_meta *sensor);
 float get_LinearAcceleration_Y(sensor_meta *sensor);
 float get_LinearAcceleration_Z(sensor_meta *sensor);
