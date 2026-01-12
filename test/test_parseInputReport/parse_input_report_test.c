@@ -173,6 +173,35 @@ void test_parse_InputReport_fills_sensor_struct_for_RawAccelerometer() {
   TEST_ASSERT_EQUAL(0x08070605, sensor.raw_accelerometer_data.timestamp);
 }
 
+void test_parse_InputReport_fills_sensor_struct_for_RawGyroscope() {
+  shtp_package shtp = {
+      .shtp_Header = {19 + 4, 0x00,  // Data length, data + header
+                      0x00, 0x00},
+      .shtp_Data = {
+          0x00, 0x00, 0x00, 0x00, 0x00,  // SHTP timestamp (ignored by parser)
+          0x15, 0x00,                    // Report ID, sequence
+          0x02,                          // Status (Accuracy)
+          0x00,                          // Delay
+          0x01, 0x02,                    // X (LSB, MSB)
+          0x03, 0x04,                    // Y
+          0x05, 0x06,                    // Z
+          0x05, 0x06, 0x07, 0x08,        // Raw report timestamp (uint32 LE)
+      },
+      .sequence_Number = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+      .command_Sequence_Number = 0x00,
+  };
+  sensor_meta sensor = {
+      .number = 1,
+      .shtp_package = shtp,
+  };
+  TEST_ASSERT_EQUAL(0x15, parse_InputReport(&sensor));
+  TEST_ASSERT_EQUAL(0x0201, sensor.raw_gyroscope_data.raw_X);
+  TEST_ASSERT_EQUAL(0x0403, sensor.raw_gyroscope_data.raw_Y);
+  TEST_ASSERT_EQUAL(0x0605, sensor.raw_gyroscope_data.raw_Z);
+  TEST_ASSERT_EQUAL(0x02, sensor.raw_gyroscope_data.accuracy);
+  TEST_ASSERT_EQUAL(0x08070605, sensor.raw_gyroscope_data.timestamp);
+}
+
 int main(int argc, char **argv) {
   UNITY_BEGIN();
   RUN_TEST(test_parse_InputReport_checks_for_null);
@@ -180,5 +209,6 @@ int main(int argc, char **argv) {
   RUN_TEST(test_parse_InputReport_fills_sensor_struct_for_LinearAcceleration);
   RUN_TEST(test_parse_InputReport_fills_all_acceleration_data);
   RUN_TEST(test_parse_InputReport_fills_sensor_struct_for_RawAccelerometer);
+  RUN_TEST(test_parse_InputReport_fills_sensor_struct_for_RawGyroscope);
   UNITY_END();
 }
