@@ -71,7 +71,6 @@ const byte CHANNEL_GYRO = 5;
 #define SENSOR_REPORTID_ARVR_GAME_ROTATION_VECTOR 0x29
 #define SENSOR_REPORTID_TAP_DETECTOR 0x10
 #define SENSOR_REPORTID_STABILITY_CLASSIFIER 0x13
-// Raw sensor reports (cf. SH-2 Reference Manual / BNO08x docs)
 #define SENSOR_REPORTID_RAW_ACCELEROMETER 0x14
 
 // Reset of the executable channel, reset complete packet (cf. [1], p.23, figure
