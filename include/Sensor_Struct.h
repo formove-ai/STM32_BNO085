@@ -106,6 +106,17 @@ typedef accelerometer_data accelerometer_data;
 typedef accelerometer_data linear_acceleration_data;
 typedef accelerometer_data gravity_data;
 
+// Struct for raw (unscaled) 3-axis sensor data (e.g. Raw Gyroscope reports)
+typedef struct raw_xyz_data {
+  int16_t raw_X;
+  int16_t raw_Y;
+  int16_t raw_Z;
+  uint8_t accuracy;   // Status/accuracy bits from the report
+  uint32_t timestamp; // Raw report timestamp (typically microseconds)
+} raw_xyz_data;
+
+typedef raw_xyz_data raw_gyroscope_data;
+
 // Struct for additional data
 typedef struct additional_data {
   volatile uint8_t stability_Classifier;
@@ -130,6 +141,7 @@ typedef struct sensor_meta {
   volatile uint16_t magneticfieldcalibrated_report_frequency;
   volatile uint16_t linear_acceleration_report_frequency;
   volatile uint16_t gravity_report_frequency;
+  volatile uint16_t raw_gyroscope_report_frequency;
   ports_pins ports_pins;
   sensor_info info;
   shtp_package shtp_package;
@@ -138,6 +150,7 @@ typedef struct sensor_meta {
   linear_acceleration_data linear_acceleration_data;
   gravity_data gravity_data;
   magnetometer_data magnetometer_data;
+  raw_gyroscope_data raw_gyroscope_data;
   additional_data additional_data;
 } sensor_meta;
 
