@@ -111,8 +111,8 @@ typedef struct raw_xyz_data {
   int16_t raw_X;
   int16_t raw_Y;
   int16_t raw_Z;
-  uint8_t accuracy;   // Status/accuracy bits from the report
-  uint32_t timestamp; // Raw report timestamp (typically microseconds)
+  uint8_t accuracy;    // Status/accuracy bits from the report
+  uint32_t timestamp;  // Raw report timestamp (typically microseconds)
 } raw_xyz_data;
 
 typedef raw_xyz_data raw_gyroscope_data;
