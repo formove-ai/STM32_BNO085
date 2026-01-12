@@ -643,7 +643,6 @@ uint16_t parse_InputReport(sensor_meta *sensor) {
     sensor->magnetometer_data.raw_Mag_Z = data3;
   } else if (sensor->shtp_package.shtp_Data[5] ==
              SENSOR_REPORTID_RAW_ACCELEROMETER) {
-             SENSOR_REPORTID_RAW_GYROSCOPE) {
     uint32_t timestamp = 0;
     if (data_Length - 5 > 11) {
       timestamp = ((uint32_t)sensor->shtp_package.shtp_Data[5 + 13] << 24) |
@@ -656,6 +655,15 @@ uint16_t parse_InputReport(sensor_meta *sensor) {
     sensor->raw_accelerometer_data.raw_Y = (int16_t)data2;
     sensor->raw_accelerometer_data.raw_Z = (int16_t)data3;
     sensor->raw_accelerometer_data.timestamp = timestamp;
+  } else if (sensor->shtp_package.shtp_Data[5] ==
+           SENSOR_REPORTID_RAW_GYROSCOPE) {
+    uint32_t timestamp = 0;
+    if (data_Length - 5 > 11) {
+      timestamp = ((uint32_t)sensor->shtp_package.shtp_Data[5 + 13] << 24) |
+                  ((uint32_t)sensor->shtp_package.shtp_Data[5 + 12] << 16) |
+                  ((uint32_t)sensor->shtp_package.shtp_Data[5 + 11] << 8) |
+                  ((uint32_t)sensor->shtp_package.shtp_Data[5 + 10] << 0);
+    }
     sensor->raw_gyroscope_data.accuracy = status_report;
     sensor->raw_gyroscope_data.raw_X = (int16_t)data1;
     sensor->raw_gyroscope_data.raw_Y = (int16_t)data2;
