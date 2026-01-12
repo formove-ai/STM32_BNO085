@@ -91,6 +91,13 @@ int16_t get_RawGyroscope_Y(sensor_meta *sensor);
 int16_t get_RawGyroscope_Z(sensor_meta *sensor);
 uint8_t get_RawGyroscope_Accuracy(sensor_meta *sensor);
 uint32_t get_RawGyroscope_Timestamp(sensor_meta *sensor);
+uint8_t enable_RawMagnetometer(sensor_meta *sensor,
+                               uint16_t time_between_reports);
+int16_t get_RawMagnetometer_X(sensor_meta *sensor);
+int16_t get_RawMagnetometer_Y(sensor_meta *sensor);
+int16_t get_RawMagnetometer_Z(sensor_meta *sensor);
+uint8_t get_RawMagnetometer_Accuracy(sensor_meta *sensor);
+uint32_t get_RawMagnetometer_Timestamp(sensor_meta *sensor);
 uint8_t tare_IMU(sensor_meta *sensor, bool all_Axis);
 uint8_t tare_persist_IMU(sensor_meta *sensor);
 uint8_t tare_set_reorientation_IMU(sensor_meta *sensor);
