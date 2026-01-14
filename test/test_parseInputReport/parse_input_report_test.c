@@ -144,7 +144,7 @@ void test_parse_InputReport_fills_all_acceleration_data() {
 
 void test_parse_InputReport_fills_sensor_struct_for_RawAccelerometer() {
   shtp_package shtp = {
-      .shtp_Header = {19 + 4, 0x00,  // Data length, data + header
+      .shtp_Header = {21 + 4, 0x00,  // Data length, data + header
                       0x00, 0x00},
       .shtp_Data = {
           0x00, 0x00, 0x00, 0x00, 0x00,  // SHTP timestamp (ignored by parser)
@@ -154,6 +154,7 @@ void test_parse_InputReport_fills_sensor_struct_for_RawAccelerometer() {
           0x01, 0x02,                    // X (LSB, MSB)
           0x03, 0x04,                    // Y
           0x05, 0x06,                    // Z
+          0xAA, 0xBB,                    // Reserved (2 bytes)
           0x05, 0x06, 0x07, 0x08,        // Raw report timestamp (uint32 LE)
       },
       .sequence_Number = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
@@ -173,7 +174,7 @@ void test_parse_InputReport_fills_sensor_struct_for_RawAccelerometer() {
 
 void test_parse_InputReport_fills_sensor_struct_for_RawGyroscope() {
   shtp_package shtp = {
-      .shtp_Header = {19 + 4, 0x00,  // Data length, data + header
+      .shtp_Header = {21 + 4, 0x00,  // Data length, data + header
                       0x00, 0x00},
       .shtp_Data = {
           0x00, 0x00, 0x00, 0x00, 0x00,  // SHTP timestamp (ignored by parser)
@@ -183,6 +184,7 @@ void test_parse_InputReport_fills_sensor_struct_for_RawGyroscope() {
           0x01, 0x02,                    // X (LSB, MSB)
           0x03, 0x04,                    // Y
           0x05, 0x06,                    // Z
+          0xAA, 0xBB,                    // Reserved (2 bytes)
           0x05, 0x06, 0x07, 0x08,        // Raw report timestamp (uint32 LE)
       },
       .sequence_Number = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
@@ -202,7 +204,7 @@ void test_parse_InputReport_fills_sensor_struct_for_RawGyroscope() {
 
 void test_parse_InputReport_fills_sensor_struct_for_RawMagnetometer() {
   shtp_package shtp = {
-      .shtp_Header = {19 + 4, 0x00,  // Data length, data + header
+      .shtp_Header = {21 + 4, 0x00,  // Data length, data + header
                       0x00, 0x00},
       .shtp_Data = {
           0x00, 0x00, 0x00, 0x00, 0x00,  // SHTP timestamp (ignored by parser)
@@ -212,6 +214,7 @@ void test_parse_InputReport_fills_sensor_struct_for_RawMagnetometer() {
           0x01, 0x02,                    // X (LSB, MSB)
           0x03, 0x04,                    // Y
           0x05, 0x06,                    // Z
+          0xAA, 0xBB,                    // Reserved (2 bytes)
           0x05, 0x06, 0x07, 0x08,        // Raw report timestamp (uint32 LE)
       },
       .sequence_Number = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
@@ -229,6 +232,58 @@ void test_parse_InputReport_fills_sensor_struct_for_RawMagnetometer() {
   TEST_ASSERT_EQUAL(0x08070605, sensor.raw_magnetometer_data.timestamp);
 }
 
+void test_parse_InputReport_raw_accel_timestamp_is_monotonic() {
+  shtp_package shtp1 = {
+      .shtp_Header = {21 + 4, 0x00,  // Data length, data + header
+                      0x00, 0x00},
+      .shtp_Data = {
+          0x00, 0x00, 0x00, 0x00, 0x00,  // SHTP timestamp (ignored by parser)
+          0x14, 0x00,                    // Report ID, sequence
+          0x02,                          // Status (Accuracy)
+          0x00,                          // Delay
+          0x01, 0x02,                    // X (LSB, MSB)
+          0x03, 0x04,                    // Y
+          0x05, 0x06,                    // Z
+          0xAA, 0xBB,                    // Reserved (2 bytes)
+          0x04, 0x03, 0x02, 0x01,        // Timestamp = 0x01020304 (LE)
+      },
+      .sequence_Number = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+      .command_Sequence_Number = 0x00,
+  };
+  shtp_package shtp2 = {
+      .shtp_Header = {21 + 4, 0x00,  // Data length, data + header
+                      0x00, 0x00},
+      .shtp_Data = {
+          0x00, 0x00, 0x00, 0x00, 0x00,  // SHTP timestamp (ignored by parser)
+          0x14, 0x01,                    // Report ID, sequence
+          0x02,                          // Status (Accuracy)
+          0x00,                          // Delay
+          0x01, 0x02,                    // X (LSB, MSB)
+          0x03, 0x04,                    // Y
+          0x05, 0x06,                    // Z
+          0xAA, 0xBB,                    // Reserved (2 bytes)
+          0x05, 0x03, 0x02, 0x01,        // Timestamp = 0x01020305 (LE)
+      },
+      .sequence_Number = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+      .command_Sequence_Number = 0x00,
+  };
+
+  sensor_meta sensor = {
+      .number = 1,
+      .shtp_package = shtp1,
+  };
+  TEST_ASSERT_EQUAL(0x14, parse_InputReport(&sensor));
+  uint32_t t1 = sensor.raw_accelerometer_data.timestamp;
+  TEST_ASSERT_EQUAL_UINT32(0x01020304, t1);
+
+  sensor.shtp_package = shtp2;
+  TEST_ASSERT_EQUAL(0x14, parse_InputReport(&sensor));
+  uint32_t t2 = sensor.raw_accelerometer_data.timestamp;
+  TEST_ASSERT_EQUAL_UINT32(0x01020305, t2);
+
+  TEST_ASSERT_TRUE(t2 > t1);
+}
+
 int main(int argc, char **argv) {
   UNITY_BEGIN();
   RUN_TEST(test_parse_InputReport_checks_for_null);
@@ -236,6 +291,7 @@ int main(int argc, char **argv) {
   RUN_TEST(test_parse_InputReport_fills_sensor_struct_for_LinearAcceleration);
   RUN_TEST(test_parse_InputReport_fills_all_acceleration_data);
   RUN_TEST(test_parse_InputReport_fills_sensor_struct_for_RawAccelerometer);
+  RUN_TEST(test_parse_InputReport_raw_accel_timestamp_is_monotonic);
   RUN_TEST(test_parse_InputReport_fills_sensor_struct_for_RawGyroscope);
   RUN_TEST(test_parse_InputReport_fills_sensor_struct_for_RawMagnetometer);
   UNITY_END();

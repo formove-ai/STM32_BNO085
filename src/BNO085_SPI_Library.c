@@ -645,11 +645,13 @@ uint16_t parse_InputReport(sensor_meta *sensor) {
   } else if (sensor->shtp_package.shtp_Data[5] ==
              SENSOR_REPORTID_RAW_ACCELEROMETER) {
     uint32_t timestamp = 0;
-    if (data_Length - 5 > 11) {
-      timestamp = ((uint32_t)sensor->shtp_package.shtp_Data[5 + 13] << 24) |
-                  ((uint32_t)sensor->shtp_package.shtp_Data[5 + 12] << 16) |
-                  ((uint32_t)sensor->shtp_package.shtp_Data[5 + 11] << 8) |
-                  ((uint32_t)sensor->shtp_package.shtp_Data[5 + 10] << 0);
+    // Raw sensor reports include 2 reserved bytes before the 32-bit timestamp.
+    // Timestamp is bytes 12..15 of the raw report payload (little-endian).
+    if ((data_Length - 5) >= 16) {
+      timestamp = ((uint32_t)sensor->shtp_package.shtp_Data[5 + 15] << 24) |
+                  ((uint32_t)sensor->shtp_package.shtp_Data[5 + 14] << 16) |
+                  ((uint32_t)sensor->shtp_package.shtp_Data[5 + 13] << 8) |
+                  ((uint32_t)sensor->shtp_package.shtp_Data[5 + 12] << 0);
     }
     sensor->raw_accelerometer_data.accuracy = status_report;
     sensor->raw_accelerometer_data.raw_X = (int16_t)data1;
@@ -659,11 +661,12 @@ uint16_t parse_InputReport(sensor_meta *sensor) {
   } else if (sensor->shtp_package.shtp_Data[5] ==
              SENSOR_REPORTID_RAW_GYROSCOPE) {
     uint32_t timestamp = 0;
-    if (data_Length - 5 > 11) {
-      timestamp = ((uint32_t)sensor->shtp_package.shtp_Data[5 + 13] << 24) |
-                  ((uint32_t)sensor->shtp_package.shtp_Data[5 + 12] << 16) |
-                  ((uint32_t)sensor->shtp_package.shtp_Data[5 + 11] << 8) |
-                  ((uint32_t)sensor->shtp_package.shtp_Data[5 + 10] << 0);
+    // Timestamp is bytes 12..15 of the raw report payload (little-endian).
+    if ((data_Length - 5) >= 16) {
+      timestamp = ((uint32_t)sensor->shtp_package.shtp_Data[5 + 15] << 24) |
+                  ((uint32_t)sensor->shtp_package.shtp_Data[5 + 14] << 16) |
+                  ((uint32_t)sensor->shtp_package.shtp_Data[5 + 13] << 8) |
+                  ((uint32_t)sensor->shtp_package.shtp_Data[5 + 12] << 0);
     }
     sensor->raw_gyroscope_data.accuracy = status_report;
     sensor->raw_gyroscope_data.raw_X = (int16_t)data1;
@@ -673,11 +676,12 @@ uint16_t parse_InputReport(sensor_meta *sensor) {
   } else if (sensor->shtp_package.shtp_Data[5] ==
              SENSOR_REPORTID_RAW_MAGNETOMETER) {
     uint32_t timestamp = 0;
-    if (data_Length - 5 > 11) {
-      timestamp = ((uint32_t)sensor->shtp_package.shtp_Data[5 + 13] << 24) |
-                  ((uint32_t)sensor->shtp_package.shtp_Data[5 + 12] << 16) |
-                  ((uint32_t)sensor->shtp_package.shtp_Data[5 + 11] << 8) |
-                  ((uint32_t)sensor->shtp_package.shtp_Data[5 + 10] << 0);
+    // Timestamp is bytes 12..15 of the raw report payload (little-endian).
+    if ((data_Length - 5) >= 16) {
+      timestamp = ((uint32_t)sensor->shtp_package.shtp_Data[5 + 15] << 24) |
+                  ((uint32_t)sensor->shtp_package.shtp_Data[5 + 14] << 16) |
+                  ((uint32_t)sensor->shtp_package.shtp_Data[5 + 13] << 8) |
+                  ((uint32_t)sensor->shtp_package.shtp_Data[5 + 12] << 0);
     }
     sensor->raw_magnetometer_data.accuracy = status_report;
     sensor->raw_magnetometer_data.raw_X = (int16_t)data1;
