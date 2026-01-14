@@ -103,6 +103,13 @@ int16_t magnetometer_Q1 = 4;  // ... the Q point is 4, see [2] pp. 70ff.
 // Debug
 bool debug_print = false;
 
+// --- Private helpers ------------------------------------------------
+// Read a little-endian uint32 from a byte buffer without sign extension.
+static inline uint32_t read_u32_le(const uint8_t *p) {
+  return ((uint32_t)p[3] << 24) | ((uint32_t)p[2] << 16) | ((uint32_t)p[1] << 8) |
+         ((uint32_t)p[0] << 0);
+}
+
 // --- SPI interface --------------------------------------------------
 
 // Helper functions to transmit and receive data via SPI
@@ -648,10 +655,7 @@ uint16_t parse_InputReport(sensor_meta *sensor) {
     // Raw sensor reports include 2 reserved bytes before the 32-bit timestamp.
     // Timestamp is bytes 12..15 of the raw report payload (little-endian).
     if ((data_Length - 5) >= 16) {
-      timestamp = ((uint32_t)sensor->shtp_package.shtp_Data[5 + 15] << 24) |
-                  ((uint32_t)sensor->shtp_package.shtp_Data[5 + 14] << 16) |
-                  ((uint32_t)sensor->shtp_package.shtp_Data[5 + 13] << 8) |
-                  ((uint32_t)sensor->shtp_package.shtp_Data[5 + 12] << 0);
+      timestamp = read_u32_le(&sensor->shtp_package.shtp_Data[5 + 12]);
     }
     sensor->raw_accelerometer_data.accuracy = status_report;
     sensor->raw_accelerometer_data.raw_X = (int16_t)data1;
@@ -663,10 +667,7 @@ uint16_t parse_InputReport(sensor_meta *sensor) {
     uint32_t timestamp = 0;
     // Timestamp is bytes 12..15 of the raw report payload (little-endian).
     if ((data_Length - 5) >= 16) {
-      timestamp = ((uint32_t)sensor->shtp_package.shtp_Data[5 + 15] << 24) |
-                  ((uint32_t)sensor->shtp_package.shtp_Data[5 + 14] << 16) |
-                  ((uint32_t)sensor->shtp_package.shtp_Data[5 + 13] << 8) |
-                  ((uint32_t)sensor->shtp_package.shtp_Data[5 + 12] << 0);
+      timestamp = read_u32_le(&sensor->shtp_package.shtp_Data[5 + 12]);
     }
     sensor->raw_gyroscope_data.accuracy = status_report;
     sensor->raw_gyroscope_data.raw_X = (int16_t)data1;
@@ -678,10 +679,7 @@ uint16_t parse_InputReport(sensor_meta *sensor) {
     uint32_t timestamp = 0;
     // Timestamp is bytes 12..15 of the raw report payload (little-endian).
     if ((data_Length - 5) >= 16) {
-      timestamp = ((uint32_t)sensor->shtp_package.shtp_Data[5 + 15] << 24) |
-                  ((uint32_t)sensor->shtp_package.shtp_Data[5 + 14] << 16) |
-                  ((uint32_t)sensor->shtp_package.shtp_Data[5 + 13] << 8) |
-                  ((uint32_t)sensor->shtp_package.shtp_Data[5 + 12] << 0);
+      timestamp = read_u32_le(&sensor->shtp_package.shtp_Data[5 + 12]);
     }
     sensor->raw_magnetometer_data.accuracy = status_report;
     sensor->raw_magnetometer_data.raw_X = (int16_t)data1;
