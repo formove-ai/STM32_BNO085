@@ -44,6 +44,8 @@ uint8_t enable_RawAccelerometer(sensor_meta *sensor,
 uint8_t enable_LinearAcceleration(sensor_meta *sensor,
                                   uint16_t time_between_reports);
 uint8_t enable_Gravity(sensor_meta *sensor, uint16_t time_between_reports);
+uint8_t enable_CalibratedGyroscope(sensor_meta *sensor,
+                                  uint16_t time_between_reports);
 uint8_t enable_RotationVector(sensor_meta *sensor,
                               uint16_t time_between_reports);
 uint8_t enable_ARVR_stabilized_RotationVector(sensor_meta *sensor,
@@ -73,6 +75,10 @@ float get_Gravity_X(sensor_meta *sensor);
 float get_Gravity_Y(sensor_meta *sensor);
 float get_Gravity_Z(sensor_meta *sensor);
 uint8_t get_Gravity_Accuracy(sensor_meta *sensor);
+float get_CalibratedGyroscope_X(sensor_meta *sensor);
+float get_CalibratedGyroscope_Y(sensor_meta *sensor);
+float get_CalibratedGyroscope_Z(sensor_meta *sensor);
+uint8_t get_CalibratedGyroscope_Accuracy(sensor_meta *sensor);
 float get_Quat_I(sensor_meta *sensor);
 float get_Quat_J(sensor_meta *sensor);
 float get_Quat_K(sensor_meta *sensor);

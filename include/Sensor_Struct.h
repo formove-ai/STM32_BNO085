@@ -91,6 +91,18 @@ typedef struct magnetometer_data {
   uint16_t magnetometer_Accuracy;
 } magnetometer_data;
 
+// Struct for calibrated gyroscope data (drift-compensated rotational velocity)
+// Units: rad/s (Q-point defined in the library, currently Q9)
+typedef struct gyroscope_data {
+  uint16_t raw_Gyro_X;
+  uint16_t raw_Gyro_Y;
+  uint16_t raw_Gyro_Z;
+  float Gyro_X;
+  float Gyro_Y;
+  float Gyro_Z;
+  uint16_t gyroscope_Accuracy;
+} gyroscope_data;
+
 // Struct for accelerometer data
 typedef struct accelerometer_data {
   uint16_t raw_Accel_X;
@@ -141,6 +153,7 @@ typedef struct sensor_meta {
   volatile uint8_t rotation_vector_mode;
   volatile uint16_t rotation_vector_report_frequency;
   volatile uint16_t accelerometer_report_frequency;
+  volatile uint16_t gyroscope_report_frequency;
   volatile uint16_t magneticfieldcalibrated_report_frequency;
   volatile uint16_t linear_acceleration_report_frequency;
   volatile uint16_t gravity_report_frequency;
@@ -155,6 +168,7 @@ typedef struct sensor_meta {
   linear_acceleration_data linear_acceleration_data;
   gravity_data gravity_data;
   magnetometer_data magnetometer_data;
+  gyroscope_data gyroscope_data;
   raw_accelerometer_data raw_accelerometer_data;
   raw_gyroscope_data raw_gyroscope_data;
   raw_magnetometer_data raw_magnetometer_data;

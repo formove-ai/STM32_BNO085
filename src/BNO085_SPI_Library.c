@@ -62,6 +62,7 @@ const byte CHANNEL_GYRO = 5;
 // Feature reports we want use and can get reports from (cf. [2], p. 38 f., p.
 // 71 f., p. 84 f.)
 #define SENSOR_REPORTID_ACCELEROMETER 0x01
+#define SENSOR_REPORTID_GYROSCOPE_CALIBRATED 0x02
 #define SENSOR_REPORTID_MAGNETIC_FIELD_CALIBRATED 0x03
 #define SENSOR_REPORTID_LINEAR_ACCELERATION 0x04
 #define SENSOR_REPORTID_GRAVITY 0x06
@@ -99,6 +100,7 @@ int16_t rotationVectorAccuracy_Q1 =
     12;  // Heading accuracy estimate in radians. The Q point is 12.
 int16_t accelerometer_Q1 = 8;  // ... the Q point is 8, see [2] pp. 66ff.
 int16_t magnetometer_Q1 = 4;  // ... the Q point is 4, see [2] pp. 70ff.
+int16_t gyroscope_Q1 = 9;  // Calibrated gyroscope output in rad/s (Q9)
 
 // Debug
 bool debug_print = false;
@@ -634,6 +636,12 @@ uint16_t parse_InputReport(sensor_meta *sensor) {
     sensor->accelerometer_data.raw_Accel_Y = data2;
     sensor->accelerometer_data.raw_Accel_Z = data3;
   } else if (sensor->shtp_package.shtp_Data[5] ==
+             SENSOR_REPORTID_GYROSCOPE_CALIBRATED) {
+    sensor->gyroscope_data.gyroscope_Accuracy = status_report;
+    sensor->gyroscope_data.raw_Gyro_X = data1;
+    sensor->gyroscope_data.raw_Gyro_Y = data2;
+    sensor->gyroscope_data.raw_Gyro_Z = data3;
+  } else if (sensor->shtp_package.shtp_Data[5] ==
              SENSOR_REPORTID_LINEAR_ACCELERATION) {
     sensor->linear_acceleration_data.accelerometer_Accuracy = status_report;
     sensor->linear_acceleration_data.raw_Accel_X = data1;
@@ -1140,6 +1148,26 @@ uint8_t enable_Gravity(sensor_meta *sensor, uint16_t time_between_reports) {
 }
 
 /**
+ * @brief Enables the report Calibrated Gyroscope and sets the desired report
+ * delay (frequency).
+ * @note Output is drift-compensated rotational velocity for X/Y/Z in rad/s.
+ * The data uses a Q-point of 9.
+ * @note The sensor hub supports up to 400 Hz for this report. This library API
+ * takes milliseconds, so the smallest non-zero period is 1ms.
+ * @param *sensor: Pointer to corresponding sensor meta data
+ * @param time_between_reports: Desired time in ms between two reports
+ * @return status: 1 no error occurred, 0 an error occurred
+ */
+uint8_t enable_CalibratedGyroscope(sensor_meta *sensor,
+                                  uint16_t time_between_reports) {
+  uint8_t status = N_ERR;
+  sensor->gyroscope_report_frequency = time_between_reports;
+  status &= set_FeatureCommand(sensor, SENSOR_REPORTID_GYROSCOPE_CALIBRATED,
+                               time_between_reports, 0);
+  return status;
+}
+
+/**
  * @brief Enables the report Rotation Vector and sets the desired report delay
  * (frequency).
  * @note Calls set_FeatureCommand with no specific_Config which sends the config
@@ -1491,6 +1519,50 @@ float get_Gravity_Z(sensor_meta *sensor) {
  */
 uint8_t get_Gravity_Accuracy(sensor_meta *sensor) {
   return (sensor->gravity_data.accelerometer_Accuracy);
+}
+
+/**
+ * Calculate the calibrated gyroscope component X with the specific Q point.
+ * @param *sensor: Pointer to corresponding sensor meta data
+ * @return: X rotational velocity in rad/s
+ */
+float get_CalibratedGyroscope_X(sensor_meta *sensor) {
+  float g = fixpoint_to_float(sensor->gyroscope_data.raw_Gyro_X, gyroscope_Q1);
+  sensor->gyroscope_data.Gyro_X = g;
+  return g;
+}
+
+/**
+ * Calculate the calibrated gyroscope component Y with the specific Q point.
+ * @param *sensor: Pointer to corresponding sensor meta data
+ * @return: Y rotational velocity in rad/s
+ */
+float get_CalibratedGyroscope_Y(sensor_meta *sensor) {
+  float g = fixpoint_to_float(sensor->gyroscope_data.raw_Gyro_Y, gyroscope_Q1);
+  sensor->gyroscope_data.Gyro_Y = g;
+  return g;
+}
+
+/**
+ * Calculate the calibrated gyroscope component Z with the specific Q point.
+ * @param *sensor: Pointer to corresponding sensor meta data
+ * @return: Z rotational velocity in rad/s
+ */
+float get_CalibratedGyroscope_Z(sensor_meta *sensor) {
+  float g = fixpoint_to_float(sensor->gyroscope_data.raw_Gyro_Z, gyroscope_Q1);
+  sensor->gyroscope_data.Gyro_Z = g;
+  return g;
+}
+
+/**
+ * @brief Return the calibrated gyroscope accuracy.
+ * @note: Assignment: 0 = Unreliable, 1 = Accuracy Low, 2 = Accuracy Medium, 3 =
+ * Accuracy High
+ * @param *sensor: Pointer to corresponding sensor meta data
+ * @return: Gyroscope accuracy
+ */
+uint8_t get_CalibratedGyroscope_Accuracy(sensor_meta *sensor) {
+  return sensor->gyroscope_data.gyroscope_Accuracy;
 }
 
 int16_t get_RawGyroscope_X(sensor_meta *sensor) {

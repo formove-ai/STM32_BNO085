@@ -70,6 +70,31 @@ void test_parse_InputReport_fills_sensor_struct_for_LinearAcceleration() {
   TEST_ASSERT_EQUAL(0x02,
                     sensor.linear_acceleration_data.accelerometer_Accuracy);
 }
+
+void test_parse_InputReport_fills_sensor_struct_for_CalibratedGyroscope() {
+  shtp_package shtp = {
+      .shtp_Header = {15 + 4, 0x00,  // Data length, data + header
+                      0x00, 0x00},
+      .shtp_Data = {
+              0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00,
+              0x03,              // Status (Accuracy)
+              0x00, 0x01, 0x02,  // X
+              0x03, 0x04,        // Y
+              0x05, 0x06         // Z
+          },
+      .sequence_Number = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+      .command_Sequence_Number = 0x00,
+  };
+  sensor_meta sensor = {
+      .number = 1,
+      .shtp_package = shtp,
+  };
+  TEST_ASSERT_EQUAL(0x02, parse_InputReport(&sensor));
+  TEST_ASSERT_EQUAL(0x0201, sensor.gyroscope_data.raw_Gyro_X);
+  TEST_ASSERT_EQUAL(0x0403, sensor.gyroscope_data.raw_Gyro_Y);
+  TEST_ASSERT_EQUAL(0x0605, sensor.gyroscope_data.raw_Gyro_Z);
+  TEST_ASSERT_EQUAL(0x03, sensor.gyroscope_data.gyroscope_Accuracy);
+}
 void test_parse_InputReport_fills_all_acceleration_data() {
   shtp_package linear_acceleration_package = {
       .shtp_Header = {15 + 4, 0x00,  // Data length, data + header
@@ -289,6 +314,7 @@ int main(int argc, char **argv) {
   RUN_TEST(test_parse_InputReport_checks_for_null);
   RUN_TEST(test_parse_InputReport_fills_sensor_struct_for_GameRotationVector);
   RUN_TEST(test_parse_InputReport_fills_sensor_struct_for_LinearAcceleration);
+  RUN_TEST(test_parse_InputReport_fills_sensor_struct_for_CalibratedGyroscope);
   RUN_TEST(test_parse_InputReport_fills_all_acceleration_data);
   RUN_TEST(test_parse_InputReport_fills_sensor_struct_for_RawAccelerometer);
   RUN_TEST(test_parse_InputReport_raw_accel_timestamp_is_monotonic);
