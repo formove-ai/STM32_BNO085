@@ -6,6 +6,10 @@
 // Implement the shims
 void delay_Us(uint32_t delay) {}
 
+void setUp(void) {}
+
+void tearDown(void) {}
+
 void test_parse_InputReport_checks_for_null() {
   sensor_meta sensor;
   TEST_ASSERT_EQUAL(0, parse_InputReport(NULL));
