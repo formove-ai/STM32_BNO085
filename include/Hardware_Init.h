@@ -41,7 +41,7 @@ void init_GPIO_IMU(sensor_meta *sensor);
 
 // Replace the aove with one function
 uint8_t init_HardwareBNO085(
-    SPI_HandleTypeDef *hspi,
-    bno085_library_spi_config_struct bno085_library_spi_config);
+    SPI_HandleTypeDef *hspi_param,
+    bno085_library_spi_config_struct spi_config);
 
 #endif  // SENSORSUIT_PROD_BNO085_SPI_LIB_BNO085_SPI_INCLUDE_HARDWARE_INIT_H_

@@ -102,6 +102,114 @@ bool debug_print = false;
 
 // --- SPI interface --------------------------------------------------
 
+// Largest payload chunk per DMA while CS stays asserted (SHTP can exceed this;
+// receive_Data chunks). send_Data fits: 4 header + up to 255 body <= 259.
+#define BNO085_SPI_MAX_DMA_BLOCK 260U
+
+static uint8_t bno085_spi_dma_tx[BNO085_SPI_MAX_DMA_BLOCK];
+static uint8_t bno085_spi_dma_rx[BNO085_SPI_MAX_DMA_BLOCK];
+
+static bool bno085_spi_dma_linked(const SPI_HandleTypeDef *hs) {
+  return (hs != NULL && hs->hdmatx != NULL && hs->hdmarx != NULL);
+}
+
+static bool bno085_spi_should_use_dma(const SPI_HandleTypeDef *hs,
+                                      uint16_t len) {
+  if (!bno085_spi_dma_linked(hs) || len <= 1U) {
+    return false;
+  }
+#if defined(BNO085_SPI_ATTEMPT_DMA) && !BNO085_SPI_ATTEMPT_DMA
+  return false;
+#else
+  return true;
+#endif
+}
+
+#if !defined(BNO085_BUILD_FOR_INTERNAL_UNIT_TESTS) && defined(STM32G0xx)
+/* Poll DMA/SPI handlers if an NVIC entry was missed during DMA wait (G0). */
+static void bno085_spi_service_dma_irqs(SPI_HandleTypeDef *hs) {
+  if (hs == NULL || hs->hdmarx == NULL || hs->hdmatx == NULL) {
+    return;
+  }
+  const uint32_t dma_isr = DMA1->ISR;
+  if (hs->hdmarx->Instance == DMA1_Channel1) {
+    if ((dma_isr & DMA_ISR_TCIF1) == DMA_ISR_TCIF1) {
+      HAL_DMA_IRQHandler(hs->hdmarx);
+    } else if ((dma_isr & DMA_ISR_TEIF1) == DMA_ISR_TEIF1) {
+      HAL_DMA_IRQHandler(hs->hdmarx);
+    }
+  } else if (hs->hdmarx->Instance == DMA1_Channel3 &&
+             (dma_isr & DMA_ISR_TCIF3) == DMA_ISR_TCIF3) {
+    HAL_DMA_IRQHandler(hs->hdmarx);
+    __HAL_DMA_ENABLE_IT(hs->hdmarx, DMA_IT_TE | DMA_IT_TC);
+  }
+  if ((dma_isr & DMA_ISR_TCIF2) == DMA_ISR_TCIF2) {
+    HAL_DMA_IRQHandler(hs->hdmatx);
+    __HAL_DMA_ENABLE_IT(hs->hdmatx, DMA_IT_TE | DMA_IT_TC);
+  }
+  if (__HAL_SPI_GET_FLAG(hs, SPI_FLAG_OVR)) {
+    __HAL_SPI_CLEAR_OVRFLAG(hs);
+  }
+  HAL_SPI_IRQHandler(hs);
+}
+#endif
+
+static HAL_StatusTypeDef bno085_spi_wait_dma_done(SPI_HandleTypeDef *hs,
+                                                  uint32_t timeout_ms) {
+  const uint32_t start = HAL_GetTick();
+  while (HAL_SPI_GetState(hs) != HAL_SPI_STATE_READY) {
+#if !defined(BNO085_BUILD_FOR_INTERNAL_UNIT_TESTS) && defined(STM32G0xx)
+    bno085_spi_service_dma_irqs(hs);
+#endif
+    if ((HAL_GetTick() - start) > timeout_ms) {
+      (void)HAL_SPI_Abort(hs);
+      return HAL_TIMEOUT;
+    }
+  }
+  return HAL_OK;
+}
+
+/**
+ * @brief Full-duplex SPI exchange: DMA when hdmatx/hdmarx are linked in MSP,
+ *        otherwise blocking HAL_SPI_TransmitReceive.
+ */
+static HAL_StatusTypeDef bno085_spi_transfer(SPI_HandleTypeDef *hs,
+                                             const uint8_t *tx_buf,
+                                             uint8_t *rx_buf, uint16_t len) {
+  if (len == 0U) {
+    return HAL_OK;
+  }
+  if (bno085_spi_should_use_dma(hs, len)) {
+    if (len > BNO085_SPI_MAX_DMA_BLOCK) {
+      return HAL_ERROR;
+    }
+    memcpy(bno085_spi_dma_tx, tx_buf, len);
+    HAL_StatusTypeDef st =
+        HAL_SPI_TransmitReceive_DMA(hs, bno085_spi_dma_tx, bno085_spi_dma_rx,
+                                    len);
+    if (st != HAL_OK) {
+      return st;
+    }
+    st = bno085_spi_wait_dma_done(hs, 1000U);
+    if (st != HAL_OK) {
+      (void)HAL_SPI_Abort(hs);
+#if defined(STM32G0xx)
+      CLEAR_BIT(hs->Instance->CR2, SPI_CR2_TXDMAEN | SPI_CR2_RXDMAEN);
+#endif
+      st = HAL_SPI_TransmitReceive(hs, (uint8_t *)tx_buf, rx_buf, len,
+                                   HAL_MAX_DELAY);
+      if (st != HAL_OK) {
+        return st;
+      }
+      return HAL_OK;
+    }
+    memcpy(rx_buf, bno085_spi_dma_rx, len);
+    return HAL_OK;
+  }
+  return HAL_SPI_TransmitReceive(hs, (uint8_t *)tx_buf, rx_buf, len,
+                                 HAL_MAX_DELAY);
+}
+
 // Helper functions to transmit and receive data via SPI
 /**
  * @brief Transmit data byte and receive data byte but doesn't store returned
@@ -111,8 +219,8 @@ bool debug_print = false;
  * @param tx_data: Data byte for transmit
  */
 void SPI_Transmit(uint8_t tx_data) {
-  uint8_t rx_data;  // receive buffer
-  HAL_SPI_TransmitReceive(&hspi, &tx_data, &rx_data, 1, HAL_MAX_DELAY);
+  uint8_t rx_data;
+  (void)bno085_spi_transfer(&hspi, &tx_data, &rx_data, 1U);
 }
 
 /**
@@ -124,8 +232,8 @@ void SPI_Transmit(uint8_t tx_data) {
  * @return rx_data: Received data byte
  */
 uint8_t SPI_TransmitReceive_Return_Byte(uint8_t tx_data) {
-  uint8_t rx_data;  // receive buffer
-  HAL_SPI_TransmitReceive(&hspi, &tx_data, &rx_data, 1, HAL_MAX_DELAY);
+  uint8_t rx_data;
+  (void)bno085_spi_transfer(&hspi, &tx_data, &rx_data, 1U);
   return rx_data;
 }
 
@@ -328,49 +436,65 @@ static uint8_t receive_Data(sensor_meta *sensor) {
   // Assert CSN
   csn(sensor->ports_pins, false);
 
-  // Get the first four bytes, the packet header
-  uint8_t tx_dummy_data = 0;
-  uint8_t packet_LSB = SPI_TransmitReceive_Return_Byte(tx_dummy_data);
-  uint8_t packet_MSB = SPI_TransmitReceive_Return_Byte(tx_dummy_data);
-  uint8_t channel_Number = SPI_TransmitReceive_Return_Byte(tx_dummy_data);
-  uint8_t sequence_Number = SPI_TransmitReceive_Return_Byte(tx_dummy_data);
+  // Read 4-byte SHTP header in one transaction (blocking or DMA)
+  uint8_t tx_header[4] = {0, 0, 0, 0};
+  if (bno085_spi_transfer(&hspi, tx_header, sensor->shtp_package.shtp_Header,
+                           4U) != HAL_OK) {
+    csn(sensor->ports_pins, true);
+    return D_ERR;
+  }
 
-  // Store the header info
-  sensor->shtp_package.shtp_Header[0] = packet_LSB;
-  sensor->shtp_package.shtp_Header[1] = packet_MSB;
-  sensor->shtp_package.shtp_Header[2] = channel_Number;
-  sensor->shtp_package.shtp_Header[3] = sequence_Number;
-
-  // Calculate the number of data bytes in this packet
-  uint16_t data_Length = (((uint16_t)packet_MSB) << 8) | ((uint16_t)packet_LSB);
-  data_Length &=
-      ~(1 << 15);  // Clear the MSB
-                   // Notice: This bit indicates if this package is a
-                   // continuation of the last. Not relevant for this
-                   // application. Notice: If other reports should be used, this
-                   // this bit must be considered and handled.
+  // Calculate total packet length from header (includes 4 header bytes)
+  uint16_t packet_total =
+      (((uint16_t)sensor->shtp_package.shtp_Header[1]) << 8) |
+      (uint16_t)sensor->shtp_package.shtp_Header[0];
+  packet_total &= (uint16_t) ~(1U << 15);  // Clear continuation bit
 
   // Check for empty packet
-  if (data_Length == 0) {
-    // Packet is empty
+  if (packet_total == 0) {
     print_Header(sensor->shtp_package);
+    csn(sensor->ports_pins, true);
     return D_NOT;  // No data available
   }
 
-  data_Length -= 4;  // Remove the header bytes from the data count
+  if (packet_total < 4U) {
+    csn(sensor->ports_pins, true);
+    return D_ERR;
+  }
 
-  // Store 0xFF in a new dummyTx array
-  uint8_t dummyTxVal = 0xFF;  // 0xFF is often uses as dummy data, SPI device
-                              // responds by sending a byte
+  uint16_t data_Length = packet_total - 4U;  // Payload byte count
 
-  // Read incoming data into the shtp_Data array
-  for (uint16_t data_Place = 0; data_Place < data_Length; data_Place++) {
-    uint8_t data_in = SPI_TransmitReceive_Return_Byte(dummyTxVal);
-
-    if (data_Place < MAX_PACKET_SIZE)  // BNO085 can respond with up to 270
-                                       // bytes, avoid overflow
-      sensor->shtp_package.shtp_Data[data_Place] =
-          data_in;  // Store data into the shtp_Data array
+  // Read payload: batched DMA/blocking when linked; chunk if payload is large
+  uint16_t remain = data_Length;
+  uint16_t pos = 0;
+  while (remain > 0U) {
+    uint16_t chunk = remain;
+    if (chunk > BNO085_SPI_MAX_DMA_BLOCK) {
+      chunk = BNO085_SPI_MAX_DMA_BLOCK;
+    }
+    if (!bno085_spi_should_use_dma(&hspi, chunk)) {
+      uint8_t dummyTxVal = 0xFF;
+      for (uint16_t i = 0; i < chunk; i++) {
+        uint8_t data_in = SPI_TransmitReceive_Return_Byte(dummyTxVal);
+        if (pos + i < MAX_PACKET_SIZE) {
+          sensor->shtp_package.shtp_Data[pos + i] = data_in;
+        }
+      }
+    } else {
+      memset(bno085_spi_dma_tx, 0xFF, chunk);
+      if (bno085_spi_transfer(&hspi, bno085_spi_dma_tx, bno085_spi_dma_rx,
+                              chunk) != HAL_OK) {
+        csn(sensor->ports_pins, true);
+        return D_ERR;
+      }
+      for (uint16_t i = 0; i < chunk; i++) {
+        if (pos + i < MAX_PACKET_SIZE) {
+          sensor->shtp_package.shtp_Data[pos + i] = bno085_spi_dma_rx[i];
+        }
+      }
+    }
+    pos = (uint16_t)(pos + chunk);
+    remain = (uint16_t)(remain - chunk);
   }
 
   // Deassert CSN
@@ -418,7 +542,6 @@ static uint8_t send_Data(sensor_meta *sensor, uint8_t channel_Number,
   // Assert CSN
   csn(sensor->ports_pins, false);
 
-  // create temporary transmit buffers
   uint8_t temp_tx_length_LSB = packet_Length & 0xFF;  // Packet length LSB
   uint8_t temp_tx_length_MSB = packet_Length >> 8;    // Packet length MSB
   uint8_t temp_tx_channel_number = channel_Number;    // Channel number
@@ -429,20 +552,25 @@ static uint8_t send_Data(sensor_meta *sensor, uint8_t channel_Number,
                                                // sent, different counter for
                                                // each channel
 
-  // Send the 4 byte packet header
-  SPI_Transmit(temp_tx_length_LSB);       // Packet length LSB
-  SPI_Transmit(temp_tx_length_MSB);       // Packet length MSB
-  SPI_Transmit(temp_tx_channel_number);   // Channel number
-  SPI_Transmit(temp_tx_sequence_number);  // Send the sequence number,
-                                          // increments with each packet sent,
-                                          // different counter for each channel
-
-  // Send the user's data packet
-  for (uint8_t i = 0; i < data_Length; i++) {
-    // Temporary buffer
-    uint8_t temp_shtp_Data_entry = sensor->shtp_package.shtp_Data[i];
-    // Send data
-    SPI_Transmit(temp_shtp_Data_entry);
+  if (bno085_spi_should_use_dma(&hspi, (uint16_t)packet_Length) &&
+      (uint16_t)packet_Length <= BNO085_SPI_MAX_DMA_BLOCK) {
+    bno085_spi_dma_tx[0] = temp_tx_length_LSB;
+    bno085_spi_dma_tx[1] = temp_tx_length_MSB;
+    bno085_spi_dma_tx[2] = temp_tx_channel_number;
+    bno085_spi_dma_tx[3] = temp_tx_sequence_number;
+    memcpy(&bno085_spi_dma_tx[4], sensor->shtp_package.shtp_Data, data_Length);
+    if (bno085_spi_transfer(&hspi, bno085_spi_dma_tx, bno085_spi_dma_rx,
+                            (uint16_t)packet_Length) != HAL_OK) {
+      status = D_ERR;
+    }
+  } else {
+    SPI_Transmit(temp_tx_length_LSB);
+    SPI_Transmit(temp_tx_length_MSB);
+    SPI_Transmit(temp_tx_channel_number);
+    SPI_Transmit(temp_tx_sequence_number);
+    for (uint8_t i = 0; i < data_Length; i++) {
+      SPI_Transmit(sensor->shtp_package.shtp_Data[i]);
+    }
   }
 
   // Deassert CSN

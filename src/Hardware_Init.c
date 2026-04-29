@@ -116,9 +116,9 @@ void init_GPIO_IMU(sensor_meta *sensor) {
 }
 
 uint8_t init_HardwareBNO085(
-    SPI_HandleTypeDef *hspi,
-    bno085_library_spi_config_struct bno085_library_spi_config) {
-  hspi = hspi;
-  bno085_library_spi_config = bno085_library_spi_config;
-  return HAL_Init_SPI(bno085_library_spi_config);
+    SPI_HandleTypeDef *hspi_param,
+    bno085_library_spi_config_struct spi_config) {
+  (void)hspi_param;
+  bno085_library_spi_config = spi_config;
+  return HAL_Init_SPI(spi_config);
 }

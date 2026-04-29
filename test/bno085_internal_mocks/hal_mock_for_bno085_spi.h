@@ -319,6 +319,8 @@ HAL_StatusTypeDef HAL_SPI_TransmitReceive(SPI_HandleTypeDef *hspi,
 HAL_StatusTypeDef HAL_SPI_TransmitReceive_DMA(SPI_HandleTypeDef *hspi,
                                               uint8_t *pTxData,
                                               uint8_t *pRxData, uint16_t Size);
+HAL_SPI_StateTypeDef HAL_SPI_GetState(const SPI_HandleTypeDef *hspi);
+HAL_StatusTypeDef HAL_SPI_Abort(SPI_HandleTypeDef *hspi);
 
 // GPIO-related functions
 GPIO_PinState HAL_GPIO_ReadPin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin);
