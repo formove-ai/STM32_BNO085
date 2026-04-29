@@ -62,6 +62,7 @@ const byte CHANNEL_GYRO = 5;
 // Feature reports we want use and can get reports from (cf. [2], p. 38 f., p.
 // 71 f., p. 84 f.)
 #define SENSOR_REPORTID_ACCELEROMETER 0x01
+#define SENSOR_REPORTID_GYROSCOPE_CALIBRATED 0x02
 #define SENSOR_REPORTID_MAGNETIC_FIELD_CALIBRATED 0x03
 #define SENSOR_REPORTID_LINEAR_ACCELERATION 0x04
 #define SENSOR_REPORTID_GRAVITY 0x06
@@ -71,6 +72,9 @@ const byte CHANNEL_GYRO = 5;
 #define SENSOR_REPORTID_ARVR_GAME_ROTATION_VECTOR 0x29
 #define SENSOR_REPORTID_TAP_DETECTOR 0x10
 #define SENSOR_REPORTID_STABILITY_CLASSIFIER 0x13
+#define SENSOR_REPORTID_RAW_ACCELEROMETER 0x14
+#define SENSOR_REPORTID_RAW_GYROSCOPE 0x15
+#define SENSOR_REPORTID_RAW_MAGNETOMETER 0x16
 
 // Reset of the executable channel, reset complete packet (cf. [1], p.23, figure
 // 1-27)
@@ -96,9 +100,17 @@ int16_t rotationVectorAccuracy_Q1 =
     12;  // Heading accuracy estimate in radians. The Q point is 12.
 int16_t accelerometer_Q1 = 8;  // ... the Q point is 8, see [2] pp. 66ff.
 int16_t magnetometer_Q1 = 4;  // ... the Q point is 4, see [2] pp. 70ff.
+int16_t gyroscope_Q1 = 9;  // Calibrated gyroscope output in rad/s (Q9)
 
 // Debug
 bool debug_print = false;
+
+// --- Private helpers ------------------------------------------------
+// Read a little-endian uint32 from a byte buffer without sign extension.
+static inline uint32_t read_u32_le(const uint8_t *p) {
+  return ((uint32_t)p[3] << 24) | ((uint32_t)p[2] << 16) | ((uint32_t)p[1] << 8) |
+         ((uint32_t)p[0] << 0);
+}
 
 // --- SPI interface --------------------------------------------------
 
@@ -699,6 +711,12 @@ uint16_t parse_InputReport(sensor_meta *sensor) {
     sensor->accelerometer_data.raw_Accel_Y = data2;
     sensor->accelerometer_data.raw_Accel_Z = data3;
   } else if (sensor->shtp_package.shtp_Data[5] ==
+             SENSOR_REPORTID_GYROSCOPE_CALIBRATED) {
+    sensor->gyroscope_data.gyroscope_Accuracy = status_report;
+    sensor->gyroscope_data.raw_Gyro_X = data1;
+    sensor->gyroscope_data.raw_Gyro_Y = data2;
+    sensor->gyroscope_data.raw_Gyro_Z = data3;
+  } else if (sensor->shtp_package.shtp_Data[5] ==
              SENSOR_REPORTID_LINEAR_ACCELERATION) {
     sensor->linear_acceleration_data.accelerometer_Accuracy = status_report;
     sensor->linear_acceleration_data.raw_Accel_X = data1;
@@ -714,6 +732,43 @@ uint16_t parse_InputReport(sensor_meta *sensor) {
     sensor->magnetometer_data.raw_Mag_X = data1;
     sensor->magnetometer_data.raw_Mag_Y = data2;
     sensor->magnetometer_data.raw_Mag_Z = data3;
+  } else if (sensor->shtp_package.shtp_Data[5] ==
+             SENSOR_REPORTID_RAW_ACCELEROMETER) {
+    uint32_t timestamp = 0;
+    // Raw sensor reports include 2 reserved bytes before the 32-bit timestamp.
+    // Timestamp is bytes 12..15 of the raw report payload (little-endian).
+    if ((data_Length - 5) >= 16) {
+      timestamp = read_u32_le(&sensor->shtp_package.shtp_Data[5 + 12]);
+    }
+    sensor->raw_accelerometer_data.accuracy = status_report;
+    sensor->raw_accelerometer_data.raw_X = (int16_t)data1;
+    sensor->raw_accelerometer_data.raw_Y = (int16_t)data2;
+    sensor->raw_accelerometer_data.raw_Z = (int16_t)data3;
+    sensor->raw_accelerometer_data.timestamp = timestamp;
+  } else if (sensor->shtp_package.shtp_Data[5] ==
+             SENSOR_REPORTID_RAW_GYROSCOPE) {
+    uint32_t timestamp = 0;
+    // Timestamp is bytes 12..15 of the raw report payload (little-endian).
+    if ((data_Length - 5) >= 16) {
+      timestamp = read_u32_le(&sensor->shtp_package.shtp_Data[5 + 12]);
+    }
+    sensor->raw_gyroscope_data.accuracy = status_report;
+    sensor->raw_gyroscope_data.raw_X = (int16_t)data1;
+    sensor->raw_gyroscope_data.raw_Y = (int16_t)data2;
+    sensor->raw_gyroscope_data.raw_Z = (int16_t)data3;
+    sensor->raw_gyroscope_data.timestamp = timestamp;
+  } else if (sensor->shtp_package.shtp_Data[5] ==
+             SENSOR_REPORTID_RAW_MAGNETOMETER) {
+    uint32_t timestamp = 0;
+    // Timestamp is bytes 12..15 of the raw report payload (little-endian).
+    if ((data_Length - 5) >= 16) {
+      timestamp = read_u32_le(&sensor->shtp_package.shtp_Data[5 + 12]);
+    }
+    sensor->raw_magnetometer_data.accuracy = status_report;
+    sensor->raw_magnetometer_data.raw_X = (int16_t)data1;
+    sensor->raw_magnetometer_data.raw_Y = (int16_t)data2;
+    sensor->raw_magnetometer_data.raw_Z = (int16_t)data3;
+    sensor->raw_magnetometer_data.timestamp = timestamp;
   } else if (sensor->shtp_package.shtp_Data[5] ==
                  SENSOR_REPORTID_ROTATION_VECTOR ||
              sensor->shtp_package.shtp_Data[5] ==
@@ -1069,6 +1124,23 @@ uint8_t enable_Accelerometer(sensor_meta *sensor,
 }
 
 /**
+ * @brief Enables the report Raw Accelerometer and sets the desired report delay
+ * (frequency).
+ * @note Raw reports are unscaled sensor values (typically ADC counts).
+ * @param *sensor: Pointer to corresponding sensor meta data
+ * @param time_between_reports: Desired time in ms between two reports
+ * @return status: 1 no error occurred, 0 an error occurred
+ */
+uint8_t enable_RawAccelerometer(sensor_meta *sensor,
+                                uint16_t time_between_reports) {
+  uint8_t status = N_ERR;
+  sensor->raw_accelerometer_report_frequency = time_between_reports;
+  status &= set_FeatureCommand(sensor, SENSOR_REPORTID_RAW_ACCELEROMETER,
+                               time_between_reports, 0);
+  return status;
+}
+
+/**
  * @brief Enables the report Magnetic Field Calibrated and sets the desired
  * report delay (frequency).
  * @param *sensor: Pointer to corresponding sensor meta data
@@ -1082,6 +1154,40 @@ uint8_t enable_MagneticFieldCalibrated(sensor_meta* sensor,
   status &=
       set_FeatureCommand(sensor, SENSOR_REPORTID_MAGNETIC_FIELD_CALIBRATED,
                          time_between_reports, 0);
+  return status;
+}
+
+/**
+ * @brief Enables the report Raw Gyroscope and sets the desired report delay
+ * (frequency).
+ * @note Raw reports are unscaled sensor values (typically ADC counts).
+ * @param *sensor: Pointer to corresponding sensor meta data
+ * @param time_between_reports: Desired time in ms between two reports
+ * @return status: 1 no error occurred, 0 an error occurred
+ */
+uint8_t enable_RawGyroscope(sensor_meta *sensor,
+                            uint16_t time_between_reports) {
+  uint8_t status = N_ERR;
+  sensor->raw_gyroscope_report_frequency = time_between_reports;
+  status &= set_FeatureCommand(sensor, SENSOR_REPORTID_RAW_GYROSCOPE,
+                               time_between_reports, 0);
+  return status;
+}
+
+/**
+ * @brief Enables the report Raw Magnetometer and sets the desired report delay
+ * (frequency).
+ * @note Raw reports are unscaled sensor values (typically ADC counts).
+ * @param *sensor: Pointer to corresponding sensor meta data
+ * @param time_between_reports: Desired time in ms between two reports
+ * @return status: 1 no error occurred, 0 an error occurred
+ */
+uint8_t enable_RawMagnetometer(sensor_meta *sensor,
+                               uint16_t time_between_reports) {
+  uint8_t status = N_ERR;
+  sensor->raw_magnetometer_report_frequency = time_between_reports;
+  status &= set_FeatureCommand(sensor, SENSOR_REPORTID_RAW_MAGNETOMETER,
+                               time_between_reports, 0);
   return status;
 }
 
@@ -1112,6 +1218,26 @@ uint8_t enable_Gravity(sensor_meta *sensor, uint16_t time_between_reports) {
   uint8_t status = N_ERR;
   sensor->gravity_report_frequency = time_between_reports;
   status &= set_FeatureCommand(sensor, SENSOR_REPORTID_GRAVITY,
+                               time_between_reports, 0);
+  return status;
+}
+
+/**
+ * @brief Enables the report Calibrated Gyroscope and sets the desired report
+ * delay (frequency).
+ * @note Output is drift-compensated rotational velocity for X/Y/Z in rad/s.
+ * The data uses a Q-point of 9.
+ * @note The sensor hub supports up to 400 Hz for this report. This library API
+ * takes milliseconds, so the smallest non-zero period is 1ms.
+ * @param *sensor: Pointer to corresponding sensor meta data
+ * @param time_between_reports: Desired time in ms between two reports
+ * @return status: 1 no error occurred, 0 an error occurred
+ */
+uint8_t enable_CalibratedGyroscope(sensor_meta *sensor,
+                                  uint16_t time_between_reports) {
+  uint8_t status = N_ERR;
+  sensor->gyroscope_report_frequency = time_between_reports;
+  status &= set_FeatureCommand(sensor, SENSOR_REPORTID_GYROSCOPE_CALIBRATED,
                                time_between_reports, 0);
   return status;
 }
@@ -1289,6 +1415,26 @@ uint8_t get_Magnetometer_Accuracy(sensor_meta *sensor) {
   return (sensor->magnetometer_data.magnetometer_Accuracy);
 }
 
+int16_t get_RawMagnetometer_X(sensor_meta *sensor) {
+  return sensor->raw_magnetometer_data.raw_X;
+}
+
+int16_t get_RawMagnetometer_Y(sensor_meta *sensor) {
+  return sensor->raw_magnetometer_data.raw_Y;
+}
+
+int16_t get_RawMagnetometer_Z(sensor_meta *sensor) {
+  return sensor->raw_magnetometer_data.raw_Z;
+}
+
+uint8_t get_RawMagnetometer_Accuracy(sensor_meta *sensor) {
+  return sensor->raw_magnetometer_data.accuracy;
+}
+
+uint32_t get_RawMagnetometer_Timestamp(sensor_meta *sensor) {
+  return sensor->raw_magnetometer_data.timestamp;
+}
+
 /**
  * Calculate the acceleration component X with the specific Q point.
  * @param *sensor: Pointer to corresponding sensor meta data
@@ -1334,6 +1480,26 @@ float get_Accelerometer_Z(sensor_meta *sensor) {
  */
 uint8_t get_Accelerometer_Accuracy(sensor_meta *sensor) {
   return (sensor->accelerometer_data.accelerometer_Accuracy);
+}
+
+int16_t get_RawAccelerometer_X(sensor_meta *sensor) {
+  return sensor->raw_accelerometer_data.raw_X;
+}
+
+int16_t get_RawAccelerometer_Y(sensor_meta *sensor) {
+  return sensor->raw_accelerometer_data.raw_Y;
+}
+
+int16_t get_RawAccelerometer_Z(sensor_meta *sensor) {
+  return sensor->raw_accelerometer_data.raw_Z;
+}
+
+uint8_t get_RawAccelerometer_Accuracy(sensor_meta *sensor) {
+  return sensor->raw_accelerometer_data.accuracy;
+}
+
+uint32_t get_RawAccelerometer_Timestamp(sensor_meta *sensor) {
+  return sensor->raw_accelerometer_data.timestamp;
 }
 
 /**
@@ -1428,6 +1594,70 @@ float get_Gravity_Z(sensor_meta *sensor) {
  */
 uint8_t get_Gravity_Accuracy(sensor_meta *sensor) {
   return (sensor->gravity_data.accelerometer_Accuracy);
+}
+
+/**
+ * Calculate the calibrated gyroscope component X with the specific Q point.
+ * @param *sensor: Pointer to corresponding sensor meta data
+ * @return: X rotational velocity in rad/s
+ */
+float get_CalibratedGyroscope_X(sensor_meta *sensor) {
+  float g = fixpoint_to_float(sensor->gyroscope_data.raw_Gyro_X, gyroscope_Q1);
+  sensor->gyroscope_data.Gyro_X = g;
+  return g;
+}
+
+/**
+ * Calculate the calibrated gyroscope component Y with the specific Q point.
+ * @param *sensor: Pointer to corresponding sensor meta data
+ * @return: Y rotational velocity in rad/s
+ */
+float get_CalibratedGyroscope_Y(sensor_meta *sensor) {
+  float g = fixpoint_to_float(sensor->gyroscope_data.raw_Gyro_Y, gyroscope_Q1);
+  sensor->gyroscope_data.Gyro_Y = g;
+  return g;
+}
+
+/**
+ * Calculate the calibrated gyroscope component Z with the specific Q point.
+ * @param *sensor: Pointer to corresponding sensor meta data
+ * @return: Z rotational velocity in rad/s
+ */
+float get_CalibratedGyroscope_Z(sensor_meta *sensor) {
+  float g = fixpoint_to_float(sensor->gyroscope_data.raw_Gyro_Z, gyroscope_Q1);
+  sensor->gyroscope_data.Gyro_Z = g;
+  return g;
+}
+
+/**
+ * @brief Return the calibrated gyroscope accuracy.
+ * @note: Assignment: 0 = Unreliable, 1 = Accuracy Low, 2 = Accuracy Medium, 3 =
+ * Accuracy High
+ * @param *sensor: Pointer to corresponding sensor meta data
+ * @return: Gyroscope accuracy
+ */
+uint8_t get_CalibratedGyroscope_Accuracy(sensor_meta *sensor) {
+  return sensor->gyroscope_data.gyroscope_Accuracy;
+}
+
+int16_t get_RawGyroscope_X(sensor_meta *sensor) {
+  return sensor->raw_gyroscope_data.raw_X;
+}
+
+int16_t get_RawGyroscope_Y(sensor_meta *sensor) {
+  return sensor->raw_gyroscope_data.raw_Y;
+}
+
+int16_t get_RawGyroscope_Z(sensor_meta *sensor) {
+  return sensor->raw_gyroscope_data.raw_Z;
+}
+
+uint8_t get_RawGyroscope_Accuracy(sensor_meta *sensor) {
+  return sensor->raw_gyroscope_data.accuracy;
+}
+
+uint32_t get_RawGyroscope_Timestamp(sensor_meta *sensor) {
+  return sensor->raw_gyroscope_data.timestamp;
 }
 
 /**
@@ -1711,30 +1941,7 @@ uint8_t tare_IMU(sensor_meta *sensor, bool all_Axis) {
 
   // Send command
   status &= send_Command(sensor, SENSOR_COMMAND_TARE);
-
-  // If z axis Tare and (ARVR-Stabilized) Game Rotation Vector, use reset to
-  // start with new config (cf. [1], p. 42).
-  if ((sensor->rotation_vector_mode == SENSOR_REPORTID_GAME_ROTATION_VECTOR ||
-       sensor->rotation_vector_mode ==
-           SENSOR_REPORTID_ARVR_GAME_ROTATION_VECTOR) &&
-      (all_Axis == false)) {
-    // Softreset without clearing DCD, check success
-    status &= softreset_IMU(sensor);
-    status &= check_Command_Success(sensor, status);
-    // Enable again specific mode
-    if (sensor->rotation_vector_mode == SENSOR_REPORTID_GAME_ROTATION_VECTOR) {
-      status &= enable_GameRotationVector(
-          sensor, sensor->rotation_vector_report_frequency);
-      status &= check_Command_Success(sensor, status);
-    } else if (sensor->rotation_vector_mode ==
-               SENSOR_REPORTID_ARVR_GAME_ROTATION_VECTOR) {
-      status &= enable_ARVR_stabilized_GameRotationVector(
-          sensor, sensor->rotation_vector_report_frequency);
-      status &= check_Command_Success(sensor, status);
-    } else {
-      return D_ERR;
-    }
-  }
+  status &= check_Command_Success(sensor, status);
 
   if (status == N_ERR) {
     // command successful
@@ -1770,13 +1977,6 @@ uint8_t tare_IMU(sensor_meta *sensor, bool all_Axis) {
 // shtp_Data[11]: P8 Reserved
 uint8_t tare_persist_IMU(sensor_meta *sensor) {
   uint8_t status = N_ERR;
-
-  // Check if not (ARVR-Stabilized) Game Rotation Vector
-  if (sensor->rotation_vector_mode == SENSOR_REPORTID_GAME_ROTATION_VECTOR ||
-      sensor->rotation_vector_mode ==
-          SENSOR_REPORTID_ARVR_GAME_ROTATION_VECTOR) {
-    return D_ERR;
-  }
 
   // Check if IMU has found magnetic north in case of (ARVR-Stabilized) Rotation
   // Vector
@@ -2320,7 +2520,6 @@ uint8_t read_FRS(sensor_meta *sensor, uint16_t frs_type, uint32_t *buffer,
  *         - @c D_ERR if an error occurred (communication failure, invalid
  * response, or device reported an error status).
  */
-
 uint8_t erase_FRS(sensor_meta* sensor, uint16_t frs_type) {
   uint8_t status = N_ERR;
 

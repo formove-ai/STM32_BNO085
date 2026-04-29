@@ -91,6 +91,18 @@ typedef struct magnetometer_data {
   uint16_t magnetometer_Accuracy;
 } magnetometer_data;
 
+// Struct for calibrated gyroscope data (drift-compensated rotational velocity)
+// Units: rad/s (Q-point defined in the library, currently Q9)
+typedef struct gyroscope_data {
+  uint16_t raw_Gyro_X;
+  uint16_t raw_Gyro_Y;
+  uint16_t raw_Gyro_Z;
+  float Gyro_X;
+  float Gyro_Y;
+  float Gyro_Z;
+  uint16_t gyroscope_Accuracy;
+} gyroscope_data;
+
 // Struct for accelerometer data
 typedef struct accelerometer_data {
   uint16_t raw_Accel_X;
@@ -105,6 +117,20 @@ typedef struct accelerometer_data {
 typedef accelerometer_data accelerometer_data;
 typedef accelerometer_data linear_acceleration_data;
 typedef accelerometer_data gravity_data;
+
+// Struct for raw (unscaled) 3-axis sensor data (Raw Accelerometer reports,
+// Raw Gyroscope reports, Raw Magnetometer reports)
+typedef struct raw_xyz_data {
+  int16_t raw_X;
+  int16_t raw_Y;
+  int16_t raw_Z;
+  uint8_t accuracy;    // Status/accuracy bits from the report
+  uint32_t timestamp;  // Raw report timestamp (typically microseconds)
+} raw_xyz_data;
+
+typedef raw_xyz_data raw_accelerometer_data;
+typedef raw_xyz_data raw_gyroscope_data;
+typedef raw_xyz_data raw_magnetometer_data;
 
 // Struct for additional data
 typedef struct additional_data {
@@ -127,9 +153,13 @@ typedef struct sensor_meta {
   volatile uint8_t rotation_vector_mode;
   volatile uint16_t rotation_vector_report_frequency;
   volatile uint16_t accelerometer_report_frequency;
+  volatile uint16_t gyroscope_report_frequency;
   volatile uint16_t magneticfieldcalibrated_report_frequency;
   volatile uint16_t linear_acceleration_report_frequency;
   volatile uint16_t gravity_report_frequency;
+  volatile uint16_t raw_accelerometer_report_frequency;
+  volatile uint16_t raw_gyroscope_report_frequency;
+  volatile uint16_t raw_magnetometer_report_frequency;
   ports_pins ports_pins;
   sensor_info info;
   shtp_package shtp_package;
@@ -138,6 +168,10 @@ typedef struct sensor_meta {
   linear_acceleration_data linear_acceleration_data;
   gravity_data gravity_data;
   magnetometer_data magnetometer_data;
+  gyroscope_data gyroscope_data;
+  raw_accelerometer_data raw_accelerometer_data;
+  raw_gyroscope_data raw_gyroscope_data;
+  raw_magnetometer_data raw_magnetometer_data;
   additional_data additional_data;
 } sensor_meta;
 
