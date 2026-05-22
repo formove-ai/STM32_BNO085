@@ -124,7 +124,13 @@ static inline uint32_t read_u32_le(const uint8_t *p) {
  */
 void SPI_Transmit(uint8_t tx_data) {
   uint8_t rx_data;  // receive buffer
-  HAL_SPI_TransmitReceive(&hspi, &tx_data, &rx_data, 1, HAL_MAX_DELAY);
+#if defined(STM32H7xx)
+  uint32_t spin = 0;
+  while ((hspi.State != HAL_SPI_STATE_READY) && (spin < 100000U)) {
+    spin++;
+  }
+#endif
+  (void)HAL_SPI_TransmitReceive(&hspi, &tx_data, &rx_data, 1, HAL_MAX_DELAY);
 }
 
 /**
@@ -412,10 +418,41 @@ static uint8_t receive_Data(sensor_meta *sensor) {
  */
 static uint8_t send_Data(sensor_meta *sensor, uint8_t channel_Number,
                          uint8_t data_Length) {
+#if !defined(STM32H7xx)
   uint8_t status = N_ERR;
+#endif
 
   uint8_t packet_Length = data_Length + 4;  // Add four bytes for the header
 
+#if defined(STM32H7xx)
+  /* One SPI1 transaction per SHTP packet (byte-at-a-time TX loses EOT on H7). */
+  {
+    uint8_t tx[32];
+    uint8_t rx[32];
+    if (packet_Length > (uint8_t)sizeof(tx)) {
+      return D_ERR;
+    }
+    check_INTN(sensor);
+    sensor->INTN_ready = 0;
+    tx[0] = (uint8_t)(packet_Length & 0xFFU);
+    tx[1] = (uint8_t)(packet_Length >> 8);
+    tx[2] = channel_Number;
+    tx[3] = sensor->shtp_package.sequence_Number[channel_Number]++;
+    for (uint8_t i = 0; i < data_Length; i++) {
+      tx[4U + i] = sensor->shtp_package.shtp_Data[i];
+    }
+    csn(sensor->ports_pins, false);
+    if (HAL_SPI_TransmitReceive(&hspi, tx, rx, packet_Length, 500U) != HAL_OK) {
+      csn(sensor->ports_pins, true);
+      return D_ERR;
+    }
+    csn(sensor->ports_pins, true);
+    HAL_Delay(5);
+    return N_ERR;
+  }
+#endif
+
+#if !defined(STM32H7xx)
   // Notice: send_Data is never called within the main loop, blocking does not
   // affect performance during runtime. Notice: Therefore check_INTN() would not
   // guarantee recognition of the pin assertion.
@@ -461,6 +498,7 @@ static uint8_t send_Data(sensor_meta *sensor, uint8_t channel_Number,
   csn(sensor->ports_pins, true);
 
   return status;
+#endif
 }
 
 /**
@@ -1714,6 +1752,19 @@ uint8_t get_ProductID(sensor_meta *sensor) {
   // Transmit packet on channel 2, 2 bytes
   status &= send_Data(sensor, CHANNEL_CONTROL, 2);
 
+#if defined(STM32H7xx)
+  {
+    uint32_t intn_wait_ms = 0;
+    for (; intn_wait_ms < 2000U; intn_wait_ms++) {
+      check_INTN(sensor);
+      if (sensor->INTN_ready == GPIO_PIN_SET) {
+        break;
+      }
+      HAL_Delay(1);
+    }
+  }
+#endif
+
   // Wait for response
   status &= check_Command_Success(sensor, status);
 
@@ -2321,8 +2372,13 @@ uint8_t check_Command_Success(sensor_meta *sensor, uint8_t status_command) {
   if (status_command) {
     while (data_available(sensor) != true) {
       ++timeout_counter;
+#if defined(STM32H7xx)
+      if (timeout_counter >=
+          20000) {  // H7: 2 s for hub responses after SPI bring-up
+#else
       if (timeout_counter >=
           2000) {  // Wait max 2000 * 100 us = 200 ms; experimental value
+#endif
         status = D_ERR;
         break;
       }
