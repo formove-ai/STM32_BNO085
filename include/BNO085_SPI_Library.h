@@ -39,9 +39,13 @@ uint8_t softresetDCD_IMU(sensor_meta *sensor);
 bool get_and_clear_Reset_Status(sensor_meta *sensor);
 uint8_t enable_Accelerometer(sensor_meta *sensor,
                              uint16_t time_between_reports);
+uint8_t enable_RawAccelerometer(sensor_meta *sensor,
+                                uint16_t time_between_reports);
 uint8_t enable_LinearAcceleration(sensor_meta *sensor,
                                   uint16_t time_between_reports);
 uint8_t enable_Gravity(sensor_meta *sensor, uint16_t time_between_reports);
+uint8_t enable_CalibratedGyroscope(sensor_meta *sensor,
+                                  uint16_t time_between_reports);
 uint8_t enable_RotationVector(sensor_meta *sensor,
                               uint16_t time_between_reports);
 uint8_t enable_ARVR_stabilized_RotationVector(sensor_meta *sensor,
@@ -58,6 +62,11 @@ float get_Accelerometer_X(sensor_meta *sensor);
 float get_Accelerometer_Y(sensor_meta *sensor);
 float get_Accelerometer_Z(sensor_meta *sensor);
 uint8_t get_Accelerometer_Accuracy(sensor_meta *sensor);
+int16_t get_RawAccelerometer_X(sensor_meta *sensor);
+int16_t get_RawAccelerometer_Y(sensor_meta *sensor);
+int16_t get_RawAccelerometer_Z(sensor_meta *sensor);
+uint8_t get_RawAccelerometer_Accuracy(sensor_meta *sensor);
+uint32_t get_RawAccelerometer_Timestamp(sensor_meta *sensor);
 float get_LinearAcceleration_X(sensor_meta *sensor);
 float get_LinearAcceleration_Y(sensor_meta *sensor);
 float get_LinearAcceleration_Z(sensor_meta *sensor);
@@ -66,6 +75,10 @@ float get_Gravity_X(sensor_meta *sensor);
 float get_Gravity_Y(sensor_meta *sensor);
 float get_Gravity_Z(sensor_meta *sensor);
 uint8_t get_Gravity_Accuracy(sensor_meta *sensor);
+float get_CalibratedGyroscope_X(sensor_meta *sensor);
+float get_CalibratedGyroscope_Y(sensor_meta *sensor);
+float get_CalibratedGyroscope_Z(sensor_meta *sensor);
+uint8_t get_CalibratedGyroscope_Accuracy(sensor_meta *sensor);
 float get_Quat_I(sensor_meta *sensor);
 float get_Quat_J(sensor_meta *sensor);
 float get_Quat_K(sensor_meta *sensor);
@@ -77,6 +90,20 @@ void update_TapDetector(sensor_meta *sensor);
 uint8_t get_ProductID(sensor_meta *sensor);
 const char* get_Reset_Reason_String(uint8_t reset_reason);
 uint8_t check_Connection_IMU(sensor_meta *sensor);
+uint8_t enable_RawGyroscope(sensor_meta *sensor,
+                            uint16_t time_between_reports);
+int16_t get_RawGyroscope_X(sensor_meta *sensor);
+int16_t get_RawGyroscope_Y(sensor_meta *sensor);
+int16_t get_RawGyroscope_Z(sensor_meta *sensor);
+uint8_t get_RawGyroscope_Accuracy(sensor_meta *sensor);
+uint32_t get_RawGyroscope_Timestamp(sensor_meta *sensor);
+uint8_t enable_RawMagnetometer(sensor_meta *sensor,
+                               uint16_t time_between_reports);
+int16_t get_RawMagnetometer_X(sensor_meta *sensor);
+int16_t get_RawMagnetometer_Y(sensor_meta *sensor);
+int16_t get_RawMagnetometer_Z(sensor_meta *sensor);
+uint8_t get_RawMagnetometer_Accuracy(sensor_meta *sensor);
+uint32_t get_RawMagnetometer_Timestamp(sensor_meta *sensor);
 uint8_t tare_IMU(sensor_meta *sensor, bool all_Axis);
 uint8_t tare_persist_IMU(sensor_meta *sensor);
 uint8_t tare_set_reorientation_IMU(sensor_meta *sensor);
