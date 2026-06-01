@@ -130,8 +130,7 @@ static bool bno085_spi_should_use_dma(const SPI_HandleTypeDef *hs,
   if (!bno085_spi_dma_linked(hs) || len <= 1U) {
     return false;
   }
-#if (defined(BNO085_SPI_DMA) && !BNO085_SPI_DMA) || \
-    (defined(BNO085_SPI_ATTEMPT_DMA) && !BNO085_SPI_ATTEMPT_DMA)
+#if defined(BNO085_SPI_DMA) && !BNO085_SPI_DMA
   return false;
 #else
   return true;
