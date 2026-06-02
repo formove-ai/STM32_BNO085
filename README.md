@@ -84,6 +84,14 @@ must be enabled, e.g. Timer 2 Clock: `__HAL_RCC_TIM2_CLK_ENABLE()`
   - Alternate function mapping: The parameter describe which pin configuration
     is used for SPI. Depending on the type of microcontroller and
     hardware / board layout the corresponding parameter must be selected.
+  - **Optional SPI DMA (STM32G0 and similar):** Link `hdmatx` / `hdmarx` on the
+    SPI handle in `HAL_SPI_MspInit` and enable the DMA and SPI NVIC lines. The
+    library uses `HAL_SPI_TransmitReceive_DMA` for multi-byte SHTP header/payload
+    transfers when DMA is linked; single-byte exchanges stay on blocking SPI. To
+    force blocking SPI while DMA remains linked (e.g. main-compatible builds),
+    add `-D BNO085_SPI_DMA=0` to the firmware build. On STM32G0, ensure SPI RX
+    FIFO threshold (`FRXTH`) is not cleared after init so 8-bit DMA RX can
+    complete.
 - IMU initialisation: Every IMU needs a pointer to a sensor struct containing
 the IMU metadata and configuration data. The initialisation can be found in
 the [Usage](#usage) section.

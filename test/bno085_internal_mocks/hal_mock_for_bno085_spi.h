@@ -1,5 +1,5 @@
-#ifndef SENSORSUIT_PROD_BNO085_SPI_LIB_BNO085_SPI_INCLUDE_HAL_MOCK_FOR_BNO085_SPI_H
-#define SENSORSUIT_PROD_BNO085_SPI_LIB_BNO085_SPI_INCLUDE_HAL_MOCK_FOR_BNO085_SPI_H
+#ifndef TEST_BNO085_INTERNAL_MOCKS_HAL_MOCK_FOR_BNO085_SPI_H_
+#define TEST_BNO085_INTERNAL_MOCKS_HAL_MOCK_FOR_BNO085_SPI_H_
 
 #include <stdint.h>
 
@@ -319,6 +319,8 @@ HAL_StatusTypeDef HAL_SPI_TransmitReceive(SPI_HandleTypeDef *hspi,
 HAL_StatusTypeDef HAL_SPI_TransmitReceive_DMA(SPI_HandleTypeDef *hspi,
                                               uint8_t *pTxData,
                                               uint8_t *pRxData, uint16_t Size);
+HAL_SPI_StateTypeDef HAL_SPI_GetState(const SPI_HandleTypeDef *hspi);
+HAL_StatusTypeDef HAL_SPI_Abort(SPI_HandleTypeDef *hspi);
 
 // GPIO-related functions
 GPIO_PinState HAL_GPIO_ReadPin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin);
@@ -353,4 +355,4 @@ HAL_StatusTypeDef HAL_ADC_Stop(ADC_HandleTypeDef *hadc);
 void HAL_TIM_IRQHandler(TIM_HandleTypeDef *htim);
 
 
-#endif // SENSORSUIT_PROD_BNO085_SPI_LIB_BNO085_SPI_INCLUDE_HAL_MOCK_FOR_BNO085_SPI_H
+#endif  // TEST_BNO085_INTERNAL_MOCKS_HAL_MOCK_FOR_BNO085_SPI_H_
