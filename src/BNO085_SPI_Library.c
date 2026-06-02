@@ -137,6 +137,8 @@ static bool bno085_spi_should_use_dma(const SPI_HandleTypeDef *hs,
 #endif
 }
 
+/* TODO(KonstantinRyan): G0 DMA IRQ polling is tied to sensor-hub MSP/NVIC layout;
+ * remove or generalize before merging this path to main. */
 #if !defined(BNO085_BUILD_FOR_INTERNAL_UNIT_TESTS) && defined(STM32G0xx)
 /* Poll DMA/SPI handlers if an NVIC entry was missed during DMA wait (G0). */
 static void bno085_spi_service_dma_irqs(SPI_HandleTypeDef *hs) {
