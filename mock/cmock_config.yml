@@ -1,0 +1,22 @@
+---
+:cmock:
+  :plugins:
+    - :ignore
+    - :callback
+  :treat_as:
+    uint8:    HEX8
+    uint16:   HEX16
+    uint32:   HEX32
+    int8:     INT8
+    int16:    INT16
+    int32:    INT32
+  :mock_prefix: Mock
+  :when_no_prototypes: :warn
+  :enforce_strict_ordering: true
+  :includes:
+    - <stdint.h>
+    - <stdbool.h>
+  :strippables:
+    - '(?:__attribute__\s*\(\s*\([^)]*\)\s*\))'
+    - '(?:CONST)'
+    - '(?:STATIC)'

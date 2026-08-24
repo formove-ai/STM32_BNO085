@@ -1,0 +1,13 @@
+services:
+  generate-mocks:
+    image: ruby:3.2-slim
+    working_dir: /workspace
+    volumes:
+      - ./:/workspace/mock
+      - ../include:/workspace/include:ro
+    command: >
+      bash -c "
+        apt-get update && apt-get install -y git &&
+        cd /workspace/mock &&
+        ./generate_mocks.sh
+      "
