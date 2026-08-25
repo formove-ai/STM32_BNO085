@@ -7,8 +7,8 @@
  * replaces the library with MockBNO085_SPI_Library.
  */
 
-#ifndef TEST_TEST_MOCK_CONSUMER_IMU_READER_H_
-#define TEST_TEST_MOCK_CONSUMER_IMU_READER_H_
+#ifndef TEST_MOCK_CONSUMER_APP_IMU_READER_H_
+#define TEST_MOCK_CONSUMER_APP_IMU_READER_H_
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -31,4 +31,4 @@ uint8_t imu_reader_start(sensor_meta *sensor, uint16_t report_interval_ms);
 // sample untouched.
 bool imu_reader_read(sensor_meta *sensor, quaternion_sample *sample);
 
-#endif  // TEST_TEST_MOCK_CONSUMER_IMU_READER_H_
+#endif  // TEST_MOCK_CONSUMER_APP_IMU_READER_H_

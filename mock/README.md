@@ -13,9 +13,12 @@ without Ruby and without Docker.
   supplies it to test builds and a second copy would clash at link time.
 - `cmock_strict_order.c` - the two counters CMock's strict ordering expects the
   test runner to define.
-- `bno085_native_hal_stub.h` - host stand-ins for the three STM32 HAL types the
-  public headers name.
 - `cmock_config.yml`, `generate_mocks.sh`, `docker-compose.yml` - regeneration.
+
+The matching host stand-ins for the STM32 HAL types live in
+`include/bno085_native_hal_stub.h`, beside the `stm32_hal.h` that includes them,
+so that application code which only has the public headers on its include path
+still compiles.
 
 ## Using it
 
@@ -35,10 +38,10 @@ lib_deps =
 ```
 
 `BNO085_BUILD_WITH_NATIVE_HAL_STUB` makes `stm32_hal.h` pick up
-`bno085_native_hal_stub.h` instead of a vendor HAL. The stub declares only the
-types that appear in the public signatures - `GPIO_TypeDef`, `SPI_TypeDef` and
-`SPI_HandleTypeDef` - and no HAL functions, so a test that accidentally reaches
-the HAL fails to link rather than silently doing nothing.
+`include/bno085_native_hal_stub.h` instead of a vendor HAL. The stub declares
+only the types that appear in the public signatures - `GPIO_TypeDef`,
+`SPI_TypeDef` and `SPI_HandleTypeDef` - and no HAL functions, so a test that
+accidentally reaches the HAL fails to link rather than silently doing nothing.
 
 A test then sets expectations instead of talking to hardware:
 
