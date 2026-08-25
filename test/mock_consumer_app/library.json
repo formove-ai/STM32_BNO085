@@ -1,0 +1,8 @@
+{
+    "name": "bno085_spi_mock_consumer_app",
+    "version": "0.0.1",
+    "description": "Stand-in application code for the mock consumer test. Depends on the BNO085 public headers only, never on the mock, so that it is compiled the same way a downstream project's own code is.",
+    "license": "MIT",
+    "frameworks": "*",
+    "platforms": "native"
+}

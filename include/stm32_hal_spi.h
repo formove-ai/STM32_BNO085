@@ -1,5 +1,5 @@
-#ifndef SENSORSUIT_PROD_BNO085_SPI_LIB_BNO085_SPI_INCLUDE_STM32_HAL_SPI_H
-#define SENSORSUIT_PROD_BNO085_SPI_LIB_BNO085_SPI_INCLUDE_STM32_HAL_SPI_H
+#ifndef INCLUDE_STM32_HAL_SPI_H_
+#define INCLUDE_STM32_HAL_SPI_H_
 
 #if defined(STM32F0xx)
 #include "stm32f0xx_hal_spi.h"
@@ -35,8 +35,10 @@
 #include "stm32wlxx_hal_spi.h"
 #elif defined(BNO085_BUILD_FOR_INTERNAL_UNIT_TESTS)
 #include "hal_mock_for_bno085_spi.h"
+#elif defined(BNO085_BUILD_WITH_NATIVE_HAL_STUB)
+#include "bno085_native_hal_stub.h"
 #else
 #error "Unsupported STM32 series. Please define the appropriate STM32 series macro."
 #endif
 
-#endif // SENSORSUIT_PROD_BNO085_SPI_LIB_BNO085_SPI_INCLUDE_STM32_HAL_SPI_H
+#endif  // INCLUDE_STM32_HAL_SPI_H_

@@ -24,4 +24,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install platformio
     - name: Run unit tests on the native platform
-      run: platformio test -e native
+      # No -e, so every native environment runs: the library's own tests and
+      # the test that consumes the generated mock in mock/.
+      run: platformio test

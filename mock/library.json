@@ -1,0 +1,16 @@
+{
+    "name": "bno085_spi_mock",
+    "version": "0.0.1",
+    "description": "CMock-generated mock of the BNO085 SPI library, bundled with the CMock runtime so that consumers need no Ruby.",
+    "keywords": "BNO085, mock, cmock, unit-test",
+    "license": "MIT",
+    "frameworks": "*",
+    "platforms": "native",
+    "build": {
+      "srcFilter": [
+        "+<MockBNO085_SPI_Library.c>",
+        "+<cmock.c>",
+        "+<cmock_strict_order.c>"
+      ]
+    }
+}

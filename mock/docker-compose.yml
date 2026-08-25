@@ -1,0 +1,15 @@
+---
+# Regenerates the mock without a local Ruby installation:
+#   cd mock && docker compose run --rm generate-mocks
+services:
+  generate-mocks:
+    # The full image rather than -slim: it already ships the git that
+    # generate_mocks.sh needs in order to fetch CMock.
+    image: ruby:3.2
+    working_dir: /workspace/mock
+    volumes:
+      - ./:/workspace/mock
+      - ../include:/workspace/include:ro
+    # Run through bash explicitly so a checkout that lost the executable bit,
+    # as happens on Windows, still works.
+    command: bash ./generate_mocks.sh
