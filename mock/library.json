@@ -1,25 +1,16 @@
 {
-  "name": "BNO085-SPI-Mock",
-  "version": "1.0.0",
-  "description": "CMock-generated mocks for BNO085 SPI Library with CMock and Unity runtime",
-  "keywords": ["mock", "test", "cmock", "unity", "bno085", "imu"],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/formove-ai/STM32_BNO085.git"
-  },
-  "license": "MIT",
-  "frameworks": ["*"],
-  "platforms": ["*"],
-  "export": {
-    "include": [
-      "MockBNO085_SPI_Library.h",
-      "MockBNO085_SPI_Library.c",
-      "cmock.h",
-      "cmock.c",
-      "cmock_internals.h",
-      "unity.h",
-      "unity.c",
-      "unity_internals.h"
-    ]
-  }
+    "name": "bno085_spi_mock",
+    "version": "0.0.1",
+    "description": "CMock-generated mock of the BNO085 SPI library, bundled with the CMock runtime so that consumers need no Ruby.",
+    "keywords": "BNO085, mock, cmock, unit-test",
+    "license": "MIT",
+    "frameworks": "*",
+    "platforms": "native",
+    "build": {
+      "srcFilter": [
+        "+<MockBNO085_SPI_Library.c>",
+        "+<cmock.c>",
+        "+<cmock_strict_order.c>"
+      ]
+    }
 }
