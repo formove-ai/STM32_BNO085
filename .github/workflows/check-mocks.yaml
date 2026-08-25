@@ -1,55 +1,57 @@
 ---
-name: Check Mock Freshness
+name: Check generated mock is up to date
 
 on:
   push:
     paths:
-      - "include/BNO085_SPI_Library.h"
+      - "include/**"
       - "mock/**"
       - ".github/workflows/check-mocks.yaml"
     branches:
       - main
   pull_request:
     paths:
-      - "include/BNO085_SPI_Library.h"
+      - "include/**"
       - "mock/**"
       - ".github/workflows/check-mocks.yaml"
 
 jobs:
   check-mocks:
-    name: Verify Mocks Are Up-to-Date
+    name: Regenerate and compare
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-      
+
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.2'
-      
-      - name: Regenerate Mocks
+
+      - name: Regenerate the mock
+        run: ./mock/generate_mocks.sh
+
+      - name: Fail if the checked-in files differ
+        # Scoped to the files generate_mocks.sh writes, so that hand-maintained
+        # files in mock/ are not part of the comparison.
         run: |
-          cd mock
-          ./generate_mocks.sh
-      
-      - name: Check for Differences
-        run: |
-          if git diff --exit-code mock/MockBNO085_SPI_Library.c mock/MockBNO085_SPI_Library.h; then
-            echo "✅ Mocks are up-to-date!"
-          else
-            echo "❌ ERROR: Mocks are stale!"
-            echo ""
-            echo "The mock files do not match the header file."
-            echo "Please regenerate mocks by running:"
-            echo "  cd mock && ./generate_mocks.sh"
-            echo "or:"
-            echo "  docker compose run --build --rm generate-mocks"
-            echo ""
-            echo "Then commit the updated mock files."
-            echo ""
-            echo "Diff:"
-            git diff mock/MockBNO085_SPI_Library.c mock/MockBNO085_SPI_Library.h
+          generated="mock/MockBNO085_SPI_Library.c
+          mock/MockBNO085_SPI_Library.h
+          mock/cmock.c
+          mock/cmock.h
+          mock/cmock_internals.h"
+          if ! git diff --exit-code --stat -- $generated; then
+            echo
+            echo "The files in mock/ do not match what generate_mocks.sh"
+            echo "produces from include/BNO085_SPI_Library.h."
+            echo
+            echo "Regenerate them and commit the result:"
+            echo "  ./mock/generate_mocks.sh"
+            echo "or, without installing Ruby:"
+            echo "  cd mock && docker compose run --rm generate-mocks"
+            echo
+            git diff -- $generated
             exit 1
           fi
+          echo "The generated mock is up to date."

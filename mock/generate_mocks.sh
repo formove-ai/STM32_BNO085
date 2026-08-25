@@ -1,73 +1,63 @@
 #!/bin/bash
+# Regenerates MockBNO085_SPI_Library.{c,h} from include/BNO085_SPI_Library.h.
+#
+# Requires git and Ruby (>= 2.5). Use docker-compose.yml instead if you would
+# rather not install Ruby.
+
 set -euo pipefail
 
-# Script to generate CMock mocks for BNO085_SPI_Library.h
-# Requires: Ruby >= 2.5, git
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." > /dev/null 2>&1 && pwd)"
+HEADER="$REPO_ROOT/include/BNO085_SPI_Library.h"
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-MOCK_DIR="$SCRIPT_DIR"
+# Pinned so that regenerating produces byte-identical output over time. The CI
+# staleness check depends on this.
 CMOCK_VERSION="v2.7.0"
 
-echo "Generating mocks for BNO085_SPI_Library.h..."
-echo "Repository root: $REPO_ROOT"
-echo "Mock directory: $MOCK_DIR"
-echo "CMock version: $CMOCK_VERSION"
+if [ ! -f "$HEADER" ]; then
+  echo "error: cannot find $HEADER" >&2
+  exit 1
+fi
 
-# Create a temporary directory for CMock
-TEMP_DIR=$(mktemp -d)
-trap 'rm -rf "$TEMP_DIR"' EXIT
-
-cd "$TEMP_DIR"
-
-# Clone CMock at the pinned version
-echo "Cloning CMock $CMOCK_VERSION..."
-git clone --depth 1 --branch "$CMOCK_VERSION" https://github.com/ThrowTheSwitch/CMock.git
-cd CMock
-
-# Install CMock dependencies (Unity)
-echo "Installing Unity..."
-git clone --depth 1 https://github.com/ThrowTheSwitch/Unity.git vendor/unity
-
-# Generate the mock
-echo "Generating mock files..."
-ruby lib/cmock.rb -o"$MOCK_DIR/cmock_config.yml" "$REPO_ROOT/include/BNO085_SPI_Library.h"
-
-# Find and move generated files to the mock directory
-echo "Moving generated files..."
-# CMock generates files in a mocks/ subdirectory by default
-if [ -f "mocks/MockBNO085_SPI_Library.c" ]; then
-    mv mocks/MockBNO085_SPI_Library.c "$MOCK_DIR/"
-    mv mocks/MockBNO085_SPI_Library.h "$MOCK_DIR/"
-elif [ -f "MockBNO085_SPI_Library.c" ]; then
-    mv MockBNO085_SPI_Library.c "$MOCK_DIR/"
-    mv MockBNO085_SPI_Library.h "$MOCK_DIR/"
-elif [ -f "../MockBNO085_SPI_Library.c" ]; then
-    mv ../MockBNO085_SPI_Library.c "$MOCK_DIR/"
-    mv ../MockBNO085_SPI_Library.h "$MOCK_DIR/"
-else
-    echo "Error: Generated mock files not found!"
-    find . -name "MockBNO085_SPI_Library.*"
+for tool in git ruby; do
+  if ! command -v "$tool" > /dev/null 2>&1; then
+    echo "error: $tool is required but not installed" >&2
     exit 1
-fi
+  fi
+done
 
-# Copy CMock runtime files if they don't exist
-if [ ! -f "$MOCK_DIR/cmock.c" ]; then
-    echo "Copying CMock runtime files..."
-    cp src/cmock.c "$MOCK_DIR/"
-    cp src/cmock.h "$MOCK_DIR/"
-    cp src/cmock_internals.h "$MOCK_DIR/"
-fi
+WORK_DIR="$(mktemp -d)"
+trap 'rm -rf "$WORK_DIR"' EXIT
 
-# Copy Unity runtime files if they don't exist
-if [ ! -f "$MOCK_DIR/unity.c" ]; then
-    echo "Copying Unity runtime files..."
-    cp vendor/unity/src/unity.c "$MOCK_DIR/"
-    cp vendor/unity/src/unity.h "$MOCK_DIR/"
-    cp vendor/unity/src/unity_internals.h "$MOCK_DIR/"
-fi
+# --recurse-submodules brings in the exact Unity revision this CMock release
+# pins. The generator loads Unity's Ruby helpers, so it is required even though
+# no Unity C source is shipped.
+echo "Cloning CMock $CMOCK_VERSION..."
+git -c advice.detachedHead=false clone --quiet --depth 1 --recurse-submodules \
+  --shallow-submodules --branch "$CMOCK_VERSION" \
+  https://github.com/ThrowTheSwitch/CMock.git "$WORK_DIR/cmock"
 
-echo "Mock generation complete!"
-echo "Generated files:"
-echo "  - MockBNO085_SPI_Library.c"
-echo "  - MockBNO085_SPI_Library.h"
+echo "Generating mock from $HEADER..."
+(
+  cd "$WORK_DIR/cmock"
+  ruby lib/cmock.rb -o"$SCRIPT_DIR/cmock_config.yml" "$HEADER"
+)
+
+# CMock writes into a mocks/ subdirectory of its working directory.
+GENERATED_DIR="$WORK_DIR/cmock/mocks"
+for name in MockBNO085_SPI_Library.c MockBNO085_SPI_Library.h; do
+  if [ ! -f "$GENERATED_DIR/$name" ]; then
+    echo "error: CMock did not produce $name" >&2
+    exit 1
+  fi
+  mv "$GENERATED_DIR/$name" "$SCRIPT_DIR/$name"
+done
+
+# The CMock runtime is shipped alongside the mock so that consumers need no
+# Ruby. Unity is deliberately not vendored: PlatformIO supplies it to test
+# builds, and a second copy would clash at link time.
+for name in cmock.c cmock.h cmock_internals.h; do
+  cp "$WORK_DIR/cmock/src/$name" "$SCRIPT_DIR/$name"
+done
+
+echo "Wrote MockBNO085_SPI_Library.{c,h} and the CMock $CMOCK_VERSION runtime."
